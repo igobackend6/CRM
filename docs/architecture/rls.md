@@ -66,6 +66,8 @@ A naive `is_workspace_member()` implemented as a plain (`SECURITY INVOKER`) SQL 
 
 Because this project's `supabase/config.toml` does not set `auto_expose_new_tables = true` (the current Supabase default is to require explicit exposure), every table also needs a `GRANT` to the `authenticated` Postgres role before PostgREST will route requests to it at all — RLS policies are evaluated only *after* that coarse grant passes. `000014_rls_policies.sql` grants exactly the statement types each table's policies actually use (e.g. `calls` gets `SELECT, INSERT, UPDATE` but not `DELETE`, matching the missing delete policy). Nothing is granted to `anon` anywhere — this CRM has no unauthenticated read surface.
 
+`000029_service_role_grants.sql` adds a blanket `GRANT ALL … TO service_role` on the whole `public` schema (tables, sequences, functions) plus matching `ALTER DEFAULT PRIVILEGES`. `service_role` is the role the FastAPI backend's privileged client uses (`notify()`, background jobs, admin ops); it bypasses RLS, so the grant is safe. On a managed Supabase project this is normally covered by *implicit* default privileges, but a full `drop schema public cascade` destroys those — this migration makes the whole chain self-sufficient on an empty database. `anon` is still granted nothing.
+
 ## 6. Storage Policies (`000015_storage.sql`)
 
 Bucket `lead-documents` (private). Object path convention `{workspace_id}/{lead_id}/{filename}`. Policies read the workspace id out of the path (`storage.foldername(name)[1]`) and reuse the same `is_workspace_member`/`has_permission` functions as table RLS:
