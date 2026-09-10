@@ -476,15 +476,22 @@ class LeadService:
     def assign_lead(self, workspace_id: UUID, lead_id: UUID, member_id: UUID | None) -> dict[str, Any]:
         """Assign, reassign, or unassign (member_id=None) a lead.
 
-        The allocations-history row and the assignee notification are NOT
-        written here — the `leads_on_assignment` trigger
-        (000027_lead_assignment_side_effects.sql) writes both on any
-        `assigned_member_id` change, so an assignment made from the Admin
-        panel's direct UPDATE gets the same side effects as one made
-        through this endpoint. Doing it here too would write two
+        The allocations-history row and the assignee notification (the
+        in-app one) are NOT written here — the `leads_on_assignment`
+        trigger (000027_lead_assignment_side_effects.sql) writes both on
+        any `assigned_member_id` change, so an assignment made from the
+        Admin panel's direct UPDATE gets the same side effects as one
+        made through this endpoint. Doing it here too would write two
         allocation rows per reassignment.
+
+        The OS-level push IS fired here — but only for the app-initiated
+        path, and only while no Supabase webhook is configured for the
+        DB-initiated path (see _maybe_push_assignment). Once
+        `internal_webhook_secret` is set, the webhook -> /internal/push
+        endpoint owns every assignment push and this becomes a no-op, so
+        there's never a double push.
         """
-        self._leads.get_for_workspace(workspace_id, lead_id)  # 404s if missing/not visible
+        lead = self._leads.get_for_workspace(workspace_id, lead_id)  # 404s if missing/not visible
 
         if member_id is not None:
             # Defense in depth beyond the composite FK on
@@ -499,7 +506,33 @@ class LeadService:
         updated = self._leads.update_for_workspace(
             workspace_id, lead_id, {"assigned_member_id": str(member_id) if member_id else None}
         )
+        if member_id is not None:
+            self._maybe_push_assignment(
+                workspace_id, str(member_id), lead_name=lead.get("name") or "A lead", lead_id=str(lead_id)
+            )
         return self._enrich(workspace_id, [updated])[0]
+
+    def _maybe_push_assignment(self, workspace_id: UUID, new_member_id: str, *, lead_name: str, lead_id: str) -> None:
+        """App-path assignment push. No-op when a Supabase Database
+        Webhook is configured (it then dispatches every assignment push,
+        covering the Admin panel too — see api/internal.py). Also skips a
+        self-assignment, matching the trigger's own no-self-notify rule.
+        Never raises."""
+        from app.core.config import get_settings
+        from app.services.push import push_to_member
+
+        if get_settings().internal_webhook_secret:
+            return
+        actor_id = self._current_member_id(workspace_id)
+        if new_member_id == actor_id:
+            return
+        push_to_member(
+            workspace_id,
+            new_member_id,
+            title="Lead assigned to you",
+            body=lead_name,
+            data={"type": "lead_assigned", "entity_type": "lead", "entity_id": lead_id},
+        )
 
     def list_allocations(self, workspace_id: UUID, lead_id: UUID) -> list[dict[str, Any]]:
         self._leads.get_for_workspace(workspace_id, lead_id)  # 404s if missing/not visible

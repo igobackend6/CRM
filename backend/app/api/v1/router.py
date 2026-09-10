@@ -6,6 +6,7 @@ from app.api.v1.calls import router as calls_router
 from app.api.v1.custom_fields import router as custom_fields_router
 from app.api.v1.customers import router as customers_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.device_tokens import router as device_tokens_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.followups import router as followups_router
 from app.api.v1.leads import router as leads_router
@@ -34,3 +35,4 @@ api_v1_router.include_router(documents_router)
 api_v1_router.include_router(message_templates_router)
 api_v1_router.include_router(reports_router)
 api_v1_router.include_router(custom_fields_router)
+api_v1_router.include_router(device_tokens_router)

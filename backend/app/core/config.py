@@ -32,6 +32,24 @@ class Settings(BaseSettings):
     ai_provider: str | None = None
     ai_provider_api_key: str | None = None
 
+    # Phase 4 — FCM push on lead assignment. All unset in every
+    # environment today (no Firebase project is configured for this
+    # repository). `services/push/service.py` treats "any of these
+    # missing" as "push unavailable" and no-ops silently — the in-app
+    # notification (notifications table + Realtime) is unaffected.
+    # Never hardcode real values here or in .env.example.
+    #   fcm_project_id            — the Firebase project id
+    #   fcm_service_account_json  — path to, OR inline JSON of, a service
+    #                               account key with the FCM send scope
+    fcm_project_id: str | None = None
+    fcm_service_account_json: str | None = None
+
+    # Shared secret a Supabase Database Webhook presents when calling the
+    # internal push endpoint (POST /internal/push/notification), so an
+    # admin-panel-initiated assignment can trigger a push too. Unset =
+    # the internal endpoint 404s.
+    internal_webhook_secret: str | None = None
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

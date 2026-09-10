@@ -19,6 +19,7 @@ import '../../features/messaging/presentation/screens/conversation_detail_screen
 import '../../features/messaging/presentation/screens/conversation_list_screen.dart';
 import '../../features/notifications/presentation/screens/notification_list_screen.dart';
 import '../../features/pipeline/presentation/screens/pipeline_screen.dart';
+import '../../features/push/presentation/providers/push_providers.dart';
 import '../../features/rechurn/presentation/screens/rechurn_queue_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/whatsapp/presentation/screens/message_templates_screen.dart';
@@ -41,6 +42,10 @@ class _RouterRefreshNotifier extends ChangeNotifier {
     // natural place to instantiate `realtimeServiceProvider` at app
     // start, mirroring `SupabaseService.initialize()`'s timing intent.
     ref.read(realtimeServiceProvider);
+    // Same rationale — keeps the backend's device_tokens in sync with
+    // this device's FCM token across login/logout (Phase 4). A quiet
+    // no-op until a Firebase project is wired.
+    ref.read(pushRegistrarProvider);
   }
 }
 

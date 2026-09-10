@@ -135,6 +135,57 @@ def test_assign_lead_does_not_send_the_notification_directly(monkeypatch):
     assert calls == []
 
 
+def _capture_push(monkeypatch):
+    calls = []
+    import app.services.push as push_pkg
+
+    monkeypatch.setattr(push_pkg, "push_to_member", lambda ws, member, **kw: calls.append({"member": member, **kw}))
+    return calls
+
+
+def test_assign_lead_fires_the_app_path_push(monkeypatch):
+    calls = _capture_push(monkeypatch)
+    client = _client(table_responses={"leads": FakeResponse(data=[_lead_row(assigned_member_id=REP2_ID)])})
+
+    LeadService(client).assign_lead(WORKSPACE_ID, LEAD_ID, REP2_ID)
+
+    assert len(calls) == 1
+    assert calls[0]["member"] == REP2_ID
+    assert calls[0]["title"] == "Lead assigned to you"
+    assert calls[0]["data"]["type"] == "lead_assigned"
+
+
+def test_assign_lead_does_not_push_on_self_assignment(monkeypatch):
+    calls = _capture_push(monkeypatch)
+    client = _client(table_responses={"leads": FakeResponse(data=[_lead_row(assigned_member_id=ASSIGNER_ID)])})
+
+    # ASSIGNER_ID is current_member_id in the fixture.
+    LeadService(client).assign_lead(WORKSPACE_ID, LEAD_ID, ASSIGNER_ID)
+
+    assert calls == []
+
+
+def test_assign_lead_skips_the_app_push_when_a_webhook_is_configured(monkeypatch):
+    calls = _capture_push(monkeypatch)
+    import app.core.config as cfg
+
+    monkeypatch.setattr(cfg.get_settings(), "internal_webhook_secret", "set", raising=False)
+    client = _client(table_responses={"leads": FakeResponse(data=[_lead_row(assigned_member_id=REP2_ID)])})
+
+    LeadService(client).assign_lead(WORKSPACE_ID, LEAD_ID, REP2_ID)
+
+    assert calls == []
+
+
+def test_unassign_lead_never_pushes(monkeypatch):
+    calls = _capture_push(monkeypatch)
+    client = _client(table_responses={"leads": FakeResponse(data=[_lead_row(assigned_member_id=None)])})
+
+    LeadService(client).assign_lead(WORKSPACE_ID, LEAD_ID, None)
+
+    assert calls == []
+
+
 def test_list_allocations_computes_previous_member_and_orders_most_recent_first():
     older = {
         "id": "alloc-1",

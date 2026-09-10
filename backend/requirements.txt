@@ -12,3 +12,10 @@ httpx
 # transitive dependency); nothing else in this repo submits multipart
 # forms yet, so it was never needed until now.
 python-multipart
+
+# Phase 4 — FCM push on assignment. Only imported once a Firebase
+# service account is actually configured (fcm_* settings); until then
+# services/push/fcm.py's get_fcm_sender() short-circuits before touching
+# it. Pinned here so a deployment that DOES configure FCM doesn't hit a
+# missing-import at send time.
+google-auth
