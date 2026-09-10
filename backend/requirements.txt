@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+supabase
+pyjwt
+apscheduler
+pytest
+httpx
+# Phase 21A — Secure Lead Documents. FastAPI's UploadFile/File() form
+# parsing depends on this at runtime (it isn't a python-fastapi
+# transitive dependency); nothing else in this repo submits multipart
+# forms yet, so it was never needed until now.
+python-multipart

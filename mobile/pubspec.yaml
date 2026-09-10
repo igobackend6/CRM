@@ -1,0 +1,99 @@
+name: mobile
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  go_router: ^18.0.0
+  supabase_flutter: ^2.17.2
+  flutter_secure_storage: ^11.0.0
+  flutter_dotenv: ^6.0.1
+  dio: ^5.11.0
+  # Phase 13 — CSV lead import needs "file selection" (§Flutter) and no
+  # existing dependency covers picking a local file; this is the
+  # standard, widely-used package for it. Used behind a thin
+  # CsvFilePicker abstraction (features/leads/presentation/controllers/
+  # csv_file_picker.dart) so tests never touch the real plugin.
+  file_picker: ^12.2.0
+  # Phase 21A — WhatsApp deep links open the installed WhatsApp app (or
+  # web.whatsapp.com) via a `wa.me` URL; this is the standard, widely-used
+  # package for launching an external URL/app from Flutter. Used behind a
+  # thin UrlLauncher abstraction (features/whatsapp/data/url_launcher.dart)
+  # so tests never touch the real plugin, same rule as file_picker/dio.
+  url_launcher: ^6.3.2
+  # Phase 21A — document upload needs to send a MIME type alongside the
+  # picked file (file_picker's PlatformFile exposes a path/extension, not
+  # a content-type); this was already resolving transitively (a
+  # dependency of file_picker/dio) but is declared directly since it's
+  # now imported directly (features/documents/data/mime_type_resolver.dart).
+  mime: ^2.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  assets:
+    - env/
+
+  # Inter (SIL Open Font License — see assets/fonts/OFL.txt), bundled as
+  # a local asset rather than pulled at runtime (e.g. via the
+  # `google_fonts` package): this app is used by field sales reps who
+  # can't be assumed to have reliable connectivity, so the exact real
+  # typeface used by the visual design this app is built against (see
+  # docs/design/design-tokens.md) must never depend on a network fetch.
+  # A single variable-weight file covers every weight the app uses
+  # (400/500/600/700) — Flutter/Skia selects the right instance per
+  # TextStyle.fontWeight automatically.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf

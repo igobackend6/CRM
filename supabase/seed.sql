@@ -1,0 +1,22 @@
+-- Local development seed data.
+--
+-- Intentionally still (almost) empty after Phase 2's schema build-out —
+-- not an oversight. Everything that might look like "seed data" is
+-- handled elsewhere, on purpose:
+--
+--   * RBAC reference data (roles, permissions, role_permissions) is
+--     required in every environment, including production, for the
+--     permission system to function at all — so it lives in a migration
+--     (supabase/migrations/000013_reference_data.sql), which every
+--     environment applies. Putting it here would mean production never
+--     gets it, since `seed.sql` is a local-dev-only Supabase CLI
+--     convention.
+--   * Per-workspace defaults (lead_statuses, lead_sources, call_outcomes)
+--     are provisioned automatically by a trigger
+--     (provision_default_workspace_data(), in
+--     000012_security_functions.sql) the moment a workspace is created —
+--     in every environment, not just here.
+--
+-- See docs/architecture/rbac.md "Why Reference Data Is a Migration" for
+-- the full reasoning. No fake lead/customer/call data is seeded here or
+-- anywhere else in this repo.
