@@ -4,9 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_shadows.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/dialer_providers.dart';
+
+/// Diameter of one keypad circle. Fixed rather than GridView-derived
+/// (which stretched each circle to fill the row, reading as oversized
+/// and shadow-smudged against the reference) so the pad reads as
+/// compact digits-in-circles with real breathing room around them,
+/// same as the reference screenshot.
+const _kKeySize = 64.0;
 
 /// The bottom nav's center call FAB destination — a full-screen dialer
 /// matching the reference screenshot's own layout: back arrow, a
@@ -135,15 +141,16 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
               ),
               Container(height: 2, color: AppColors.brandOrange),
               const SizedBox(height: AppSpacing.xl),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                mainAxisSpacing: AppSpacing.md,
-                crossAxisSpacing: AppSpacing.md,
-                childAspectRatio: 1,
-                children: [for (final key in _kKeys) _KeypadButton(keyDef: key, onTap: () => _append(key.digit))],
-              ),
+              for (var row = 0; row < _kKeys.length; row += 3) ...[
+                if (row > 0) const SizedBox(height: AppSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (final key in _kKeys.skip(row).take(3))
+                      _KeypadButton(keyDef: key, onTap: () => _append(key.digit)),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.xl),
               _CallButton(onPressed: _call),
               const SizedBox(height: AppSpacing.lg),
@@ -164,25 +171,27 @@ class _KeypadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: DecoratedBox(
-          decoration: const BoxDecoration(shape: BoxShape.circle, boxShadow: AppShadows.small),
+    return SizedBox(
+      width: _kKeySize,
+      height: _kKeySize,
+      child: Material(
+        color: theme.colorScheme.surface,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(keyDef.digit, style: theme.textTheme.headlineSmall),
+                Text(keyDef.digit, style: theme.textTheme.titleLarge),
                 if (keyDef.letters.isNotEmpty)
                   Text(
                     keyDef.letters,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.outline,
-                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 9,
+                      letterSpacing: 0.5,
                     ),
                   ),
               ],
