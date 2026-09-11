@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
@@ -61,6 +62,30 @@ class AppShellScreen extends ConsumerWidget {
         ],
       ),
       body: const DashboardScreen(),
+      // The Runo-reference footer (docs/design/design-tokens.md) — UI
+      // only for this pass. Home is this screen; the other three tabs
+      // push the closest existing screen rather than swapping this
+      // Scaffold's body, so the bar itself doesn't yet persist across
+      // them — see AppBottomNavBar's docstring.
+      bottomNavigationBar: AppBottomNavBar(
+        currentTab: AppNavTab.home,
+        onSelect: (tab) => _onNavTap(context, tab),
+      ),
+      floatingActionButton: AppCallFab(onPressed: () => context.push(RoutePaths.calls)),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
+  }
+
+  void _onNavTap(BuildContext context, AppNavTab tab) {
+    switch (tab) {
+      case AppNavTab.home:
+        break; // already here
+      case AppNavTab.allocations:
+        context.push(RoutePaths.leads);
+      case AppNavTab.customers:
+        context.push(RoutePaths.customers);
+      case AppNavTab.menu:
+        context.push(RoutePaths.menu);
+    }
   }
 }

@@ -7,6 +7,7 @@ library;
 export 'accent_card.dart';
 export 'activity_filter_chips.dart';
 export 'activity_tile.dart';
+export 'app_bottom_nav_bar.dart';
 export 'app_error_banner.dart';
 export 'app_retry_view.dart';
 export 'app_status_chip.dart';

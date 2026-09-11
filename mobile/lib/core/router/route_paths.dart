@@ -30,11 +30,17 @@ class RoutePaths {
 
   // Phase 8 — Customer 360 & Unified Interaction Timeline. `id` is an
   // existing leads.id (a customer IS a lead with is_customer=true) —
-  // there is no separate customer id space, and no customer *list*
-  // screen (out of scope; reachable only from Lead Detail or a direct
-  // link).
+  // there is no separate customer id space. `customers` itself (no id)
+  // used to have no screen at all; the bottom nav's Customers tab
+  // (below) now gives it one, still just a placeholder pending the real
+  // list.
   static const String customers = '/app/customers';
   static String customerDetail(String id) => '/app/customers/$id';
+
+  // Bottom nav (Runo-reference footer, docs/design/design-tokens.md) —
+  // Home/Allocations reuse existing routes (app shell, leads); Customers
+  // above and Menu here are new landing points the footer needed.
+  static const String menu = '/app/menu';
 
   // Phase 9 — Calling & Call Log Foundation.
   static const String calls = '/app/calls';

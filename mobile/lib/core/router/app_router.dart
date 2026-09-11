@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/app_shell/presentation/screens/app_shell_screen.dart';
+import '../../features/app_shell/presentation/screens/menu_screen.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/calls/presentation/screens/call_detail_screen.dart';
 import '../../features/calls/presentation/screens/call_form_screen.dart';
 import '../../features/calls/presentation/screens/call_list_screen.dart';
 import '../../features/customer360/presentation/screens/customer_detail_screen.dart';
+import '../../features/customer360/presentation/screens/customers_overview_screen.dart';
 import '../../features/followups/presentation/screens/follow_up_detail_screen.dart';
 import '../../features/followups/presentation/screens/follow_up_form_screen.dart';
 import '../../features/followups/presentation/screens/follow_up_list_screen.dart';
@@ -111,10 +113,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // Declared before the `:id` child, same reasoning as leads'/
+      // follow-ups' "create" routes above — otherwise a literal
+      // "/app/customers" match would fall through to the `:id` pattern.
+      GoRoute(path: RoutePaths.customers, builder: (context, state) => const CustomersOverviewScreen()),
       GoRoute(
         path: '${RoutePaths.customers}/:id',
         builder: (context, state) => CustomerDetailScreen(customerId: state.pathParameters['id']!),
       ),
+      GoRoute(path: RoutePaths.menu, builder: (context, state) => const MenuScreen()),
       GoRoute(path: RoutePaths.notifications, builder: (context, state) => const NotificationListScreen()),
       GoRoute(
         path: RoutePaths.calls,
