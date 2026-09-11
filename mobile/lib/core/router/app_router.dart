@@ -12,6 +12,7 @@ import '../../features/calls/presentation/screens/call_form_screen.dart';
 import '../../features/calls/presentation/screens/call_list_screen.dart';
 import '../../features/customer360/presentation/screens/customer_detail_screen.dart';
 import '../../features/customer360/presentation/screens/customers_overview_screen.dart';
+import '../../features/dialer/presentation/screens/dialer_screen.dart';
 import '../../features/followups/presentation/screens/follow_up_detail_screen.dart';
 import '../../features/followups/presentation/screens/follow_up_form_screen.dart';
 import '../../features/followups/presentation/screens/follow_up_list_screen.dart';
@@ -96,8 +97,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   // Declared before the `:id` child so a literal
                   // "create" segment matches this route, not the `:id`
-                  // pattern below.
-                  GoRoute(path: 'create', builder: (context, state) => const LeadFormScreen()),
+                  // pattern below. `extra` carries a phone number typed
+                  // into the dialer's "Create new customer" shortcut
+                  // (RoutePaths.dialer) — null for every other caller.
+                  GoRoute(
+                    path: 'create',
+                    builder: (context, state) => LeadFormScreen(initialPhone: state.extra as String?),
+                  ),
                   GoRoute(
                     path: ':id',
                     builder: (context, state) => LeadDetailScreen(leadId: state.pathParameters['id']!),
@@ -131,6 +137,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      GoRoute(path: RoutePaths.dialer, builder: (context, state) => const DialerScreen()),
       GoRoute(path: RoutePaths.pipeline, builder: (context, state) => const PipelineScreen()),
       GoRoute(path: RoutePaths.rechurn, builder: (context, state) => const RechurnQueueScreen()),
       GoRoute(path: RoutePaths.reports, builder: (context, state) => const ReportsScreen()),

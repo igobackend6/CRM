@@ -104,9 +104,7 @@ class _NavItem extends StatelessWidget {
 
 /// The bottom bar's docked center action — a phone dialer shortcut, the
 /// same "floating call button" every Runo screen keeps on screen.
-/// Destination is the existing call list/log (`RoutePaths.calls`, no
-/// `leadId` = every call) — the closest real screen today; a proper
-/// standalone dialer is deferred workflow.
+/// Opens `RoutePaths.dialer` (see `DialerScreen`).
 class AppCallFab extends StatelessWidget {
   const AppCallFab({super.key, required this.onPressed});
 

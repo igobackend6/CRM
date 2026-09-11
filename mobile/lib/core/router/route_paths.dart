@@ -42,6 +42,12 @@ class RoutePaths {
   // above and Menu here are new landing points the footer needed.
   static const String menu = '/app/menu';
 
+  // The bottom nav's center call FAB (docs/design/design-tokens.md) —
+  // a full-screen dialer, matching the reference's own full-screen (no
+  // bottom bar) treatment, so declared outside the StatefulShellRoute
+  // like Calls/Reports below rather than nested in a branch.
+  static const String dialer = '/app/dialer';
+
   // Phase 9 — Calling & Call Log Foundation.
   static const String calls = '/app/calls';
   static const String callCreate = '/app/calls/create';

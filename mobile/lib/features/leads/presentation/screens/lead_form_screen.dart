@@ -15,9 +15,15 @@ import '../providers/leads_providers.dart';
 /// Create Lead (Phase 5 §3) and Edit Lead (§4) — same form, mode decided
 /// by whether [leadId] is set.
 class LeadFormScreen extends ConsumerStatefulWidget {
-  const LeadFormScreen({super.key, this.leadId});
+  const LeadFormScreen({super.key, this.leadId, this.initialPhone});
 
   final String? leadId;
+
+  /// Pre-fills the Phone field on create — used by the dialer
+  /// (`RoutePaths.dialer`)'s "Create new customer" shortcut so a number
+  /// already typed there isn't retyped. Ignored in edit mode, where the
+  /// lead's own phone always wins.
+  final String? initialPhone;
 
   bool get isEditing => leadId != null;
 
@@ -40,6 +46,14 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
   final Map<String, Object?> _customValues = {};
   bool _prefilled = false;
   bool _defaultStatusApplied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.isEditing && widget.initialPhone != null) {
+      _phoneController.text = widget.initialPhone!;
+    }
+  }
 
   @override
   void dispose() {

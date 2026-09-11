@@ -26,7 +26,7 @@ class AppShellScaffold extends StatelessWidget {
         currentTab: AppNavTab.values[navigationShell.currentIndex],
         onSelect: (tab) => _onSelect(context, tab),
       ),
-      floatingActionButton: AppCallFab(onPressed: () => context.push(RoutePaths.calls)),
+      floatingActionButton: AppCallFab(onPressed: () => context.push(RoutePaths.dialer)),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
