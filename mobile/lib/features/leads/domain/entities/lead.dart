@@ -15,6 +15,10 @@ class Lead {
     required this.name,
     this.phone,
     this.email,
+    this.addressLine,
+    this.city,
+    this.stateRegion,
+    this.country,
     required this.priority,
     this.status,
     this.source,
@@ -33,6 +37,10 @@ class Lead {
         name: json['name'] as String,
         phone: json['phone'] as String?,
         email: json['email'] as String?,
+        addressLine: json['address_line'] as String?,
+        city: json['city'] as String?,
+        stateRegion: json['state_region'] as String?,
+        country: json['country'] as String?,
         priority: json['priority'] as String? ?? 'medium',
         status: json['status'] != null ? LeadStatus.fromJson(json['status'] as Map<String, dynamic>) : null,
         source: json['source'] != null ? LeadSource.fromJson(json['source'] as Map<String, dynamic>) : null,
@@ -52,6 +60,10 @@ class Lead {
   final String name;
   final String? phone;
   final String? email;
+  final String? addressLine;
+  final String? city;
+  final String? stateRegion;
+  final String? country;
   final String priority;
   final LeadStatus? status;
   final LeadSource? source;
@@ -73,6 +85,10 @@ class Lead {
         name: name,
         phone: phone,
         email: email,
+        addressLine: addressLine,
+        city: city,
+        stateRegion: stateRegion,
+        country: country,
         priority: priority,
         status: status,
         source: source,

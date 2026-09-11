@@ -8,6 +8,10 @@ class LeadDraft {
     required this.name,
     this.phone,
     this.email,
+    this.addressLine,
+    this.city,
+    this.stateRegion,
+    this.country,
     this.sourceId,
     this.statusId,
     this.priority = 'medium',
@@ -17,6 +21,10 @@ class LeadDraft {
   final String name;
   final String? phone;
   final String? email;
+  final String? addressLine;
+  final String? city;
+  final String? stateRegion;
+  final String? country;
   final String? sourceId;
   final String? statusId;
   final String priority;
@@ -30,6 +38,10 @@ class LeadDraft {
         'name': name,
         if (phone != null && phone!.isNotEmpty) 'phone': phone,
         if (email != null && email!.isNotEmpty) 'email': email,
+        if (addressLine != null && addressLine!.isNotEmpty) 'address_line': addressLine,
+        if (city != null && city!.isNotEmpty) 'city': city,
+        if (stateRegion != null && stateRegion!.isNotEmpty) 'state_region': stateRegion,
+        if (country != null && country!.isNotEmpty) 'country': country,
         if (sourceId != null) 'source_id': sourceId,
         if (statusId != null) 'status_id': statusId,
         'priority': priority,

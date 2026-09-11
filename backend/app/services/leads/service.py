@@ -142,6 +142,10 @@ class LeadService:
             "source_id": str(data["source_id"]) if data.get("source_id") else None,
             "status_id": str(status_id),
             "priority": data.get("priority") or "medium",
+            "address_line": data.get("address_line"),
+            "city": data.get("city"),
+            "state_region": data.get("state_region"),
+            "country": data.get("country"),
             # Never trust a client-supplied owner — the creating member
             # becomes both the assignee and the creator (Phase 5 §9).
             "assigned_member_id": member_id,

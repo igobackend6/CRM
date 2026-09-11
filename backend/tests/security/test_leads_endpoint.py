@@ -217,6 +217,43 @@ def test_create_lead_happy_path(client):
     assert response.json()["name"] == "Acme Corp"
 
 
+def test_create_lead_accepts_and_returns_address_fields(client):
+    """address_line/city/state_region/country existed on `leads`
+    (000008_leads.sql) since Phase 5 but were dormant until the
+    Customers-tab create form needed them — this is the schema-wiring
+    check: the request isn't rejected, and LeadOut doesn't drop them."""
+    fake_client = _install(has_permission=True)
+    fake_client._table_responses["leads"] = FakeResponse(
+        data=[
+            {
+                **_lead_row(),
+                "address_line": "221B Baker Street",
+                "city": "Chennai",
+                "state_region": "Tamil Nadu",
+                "country": "India",
+            }
+        ]
+    )
+
+    response = client.post(
+        f"/api/v1/workspaces/{WORKSPACE_ID}/leads",
+        json={
+            "name": "Acme Corp",
+            "address_line": "221B Baker Street",
+            "city": "Chennai",
+            "state_region": "Tamil Nadu",
+            "country": "India",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["address_line"] == "221B Baker Street"
+    assert body["city"] == "Chennai"
+    assert body["state_region"] == "Tamil Nadu"
+    assert body["country"] == "India"
+
+
 def test_create_lead_missing_name_is_a_422_validation_error(client):
     _install(has_permission=True)
     response = client.post(f"/api/v1/workspaces/{WORKSPACE_ID}/leads", json={"phone": "+15551234567"})

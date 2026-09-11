@@ -93,6 +93,13 @@ class LeadCreate(BaseModel):
     # omitted, since `leads.status_id` is NOT NULL in the schema.
     status_id: UUID | None = None
     priority: str = "medium"
+    # Columns that existed on `leads` (000008_leads.sql) since Phase 5 but
+    # were never exposed through the API until the Customers-tab create
+    # form needed them — no migration required, they were just dormant.
+    address_line: str | None = Field(default=None, max_length=500)
+    city: str | None = Field(default=None, max_length=120)
+    state_region: str | None = Field(default=None, max_length=120)
+    country: str | None = Field(default=None, max_length=120)
     # {field_code: value} for workspace-defined custom fields
     # (000025_custom_fields.sql). Validated and type-coerced server-side
     # against each field's definition; mandatory fields are enforced on
@@ -113,6 +120,10 @@ class LeadUpdate(BaseModel):
     source_id: UUID | None = None
     status_id: UUID | None = None
     priority: str | None = None
+    address_line: str | None = Field(default=None, max_length=500)
+    city: str | None = Field(default=None, max_length=120)
+    state_region: str | None = Field(default=None, max_length=120)
+    country: str | None = Field(default=None, max_length=120)
     # Partial: only the codes present are written. A value of null clears
     # that field. Mandatory fields are not re-checked on update.
     custom_fields: dict[str, Any] | None = None
@@ -128,6 +139,10 @@ class LeadOut(BaseModel):
     name: str
     phone: str | None = None
     email: str | None = None
+    address_line: str | None = None
+    city: str | None = None
+    state_region: str | None = None
+    country: str | None = None
     priority: str
     status: LeadStatusOut | None = None
     source: LeadSourceOut | None = None
