@@ -21,6 +21,15 @@
 -- (000017) still runs first and blocks anyone without leads.assign, so
 -- by the time this AFTER trigger fires the change is already authorized.
 -- The generic leads_audit AFTER trigger (000012) is unaffected.
+--
+-- Fires on INSERT too, not just UPDATE OF assigned_member_id: a lead can
+-- be created with an assignee already set in a single INSERT (the Admin
+-- panel's New Customer form, or CSV bulk import with an Assign To column
+-- or Auto Assign) — an UPDATE-only trigger silently skips the allocation
+-- row and the notification for that path. OLD is unassigned during an
+-- INSERT trigger in PL/pgSQL, so every OLD.assigned_member_id read below
+-- is resolved once into v_previous, guarded on TG_OP, instead of read
+-- directly.
 
 create or replace function on_lead_assignment()
 returns trigger
@@ -30,13 +39,16 @@ set search_path = public
 as $$
 declare
   v_actor uuid;
+  v_previous uuid := case when tg_op = 'UPDATE' then old.assigned_member_id else null end;
 begin
   -- Only a real (re)assignment. Unassignment (new.assigned_member_id
   -- null) has no assignee to record or notify — allocations.assigned_member_id
   -- is NOT NULL, and there is no recipient. It is still captured by
-  -- leads_audit like every other leads UPDATE.
-  if new.assigned_member_id is distinct from old.assigned_member_id
-     and new.assigned_member_id is not null then
+  -- leads_audit like every other leads UPDATE. A freshly inserted row
+  -- always counts as a real assignment (v_previous is null, so it can
+  -- only be distinct-from when new.assigned_member_id is not null).
+  if new.assigned_member_id is not null
+     and (tg_op = 'INSERT' or new.assigned_member_id is distinct from v_previous) then
 
     v_actor := current_member_id(new.workspace_id);
 
@@ -51,14 +63,16 @@ begin
     -- lead_reassigned distinguishes a first assignment from a hand-off,
     -- matching the two CHECK values notifications.type already carries
     -- (000011) — same distinction LeadService made before this trigger.
+    -- A lead created with an assignee reads as a first assignment
+    -- (v_previous is null), same as a plain UPDATE from unassigned.
     if new.assigned_member_id is distinct from v_actor then
       insert into notifications
         (workspace_id, recipient_member_id, type, title, body,
          related_entity_type, related_entity_id)
       values
         (new.workspace_id, new.assigned_member_id,
-         case when old.assigned_member_id is null then 'lead_assigned' else 'lead_reassigned' end,
-         case when old.assigned_member_id is null then 'Lead assigned to you' else 'Lead reassigned to you' end,
+         case when v_previous is null then 'lead_assigned' else 'lead_reassigned' end,
+         case when v_previous is null then 'Lead assigned to you' else 'Lead reassigned to you' end,
          new.name,
          'lead', new.id);
     end if;
@@ -69,9 +83,9 @@ end;
 $$;
 
 comment on function on_lead_assignment() is
-  'Writes the allocations history row and the assignee notification on every leads.assigned_member_id change, regardless of which client made it. LeadService.assign_lead no longer does this itself (would double the allocation row).';
+  'Writes the allocations history row and the assignee notification on every leads insert-with-assignee or assigned_member_id change, regardless of which client made it. LeadService.assign_lead no longer does this itself (would double the allocation row).';
 
 create trigger leads_on_assignment
-  after update of assigned_member_id on leads
+  after insert or update of assigned_member_id on leads
   for each row
   execute function on_lead_assignment();
