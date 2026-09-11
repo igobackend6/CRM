@@ -13,10 +13,10 @@ enum AppNavTab { home, allocations, customers, menu }
 /// [AppCallFab] docked in the center notch (wire both together via
 /// `Scaffold.bottomNavigationBar` + `floatingActionButton:
 /// floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked`,
-/// see `AppShellScreen`). UI only for now — each tab navigates to the
-/// closest existing screen; a persistent-across-screens shell (so the
-/// bar itself doesn't disappear when a tab pushes a new route) is
-/// deferred workflow, not part of this pass.
+/// see `AppShellScaffold`, the `StatefulShellRoute` wrapper in
+/// `app_router.dart` that keeps this bar alive across tab switches).
+/// Each tab navigates to the closest existing screen for now — see
+/// `app_router.dart`'s branch routes for what each one actually shows.
 class AppBottomNavBar extends StatelessWidget {
   const AppBottomNavBar({super.key, required this.currentTab, required this.onSelect});
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/app_shell/presentation/screens/app_shell_scaffold.dart';
 import '../../features/app_shell/presentation/screens/app_shell_screen.dart';
 import '../../features/app_shell/presentation/screens/menu_screen.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
@@ -68,23 +69,65 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: RoutePaths.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: RoutePaths.login, builder: (context, state) => const LoginScreen()),
       GoRoute(path: RoutePaths.workspace, builder: (context, state) => const WorkspaceSelectionScreen()),
-      GoRoute(path: RoutePaths.app, builder: (context, state) => const AppShellScreen()),
-      GoRoute(
-        path: RoutePaths.leads,
-        builder: (context, state) => const LeadListScreen(),
-        routes: [
-          // Declared before the `:id` child so a literal "create"
-          // segment matches this route, not the `:id` pattern below.
-          GoRoute(path: 'create', builder: (context, state) => const LeadFormScreen()),
-          GoRoute(
-            path: ':id',
-            builder: (context, state) => LeadDetailScreen(leadId: state.pathParameters['id']!),
+      // The bottom-nav shell (Runo-reference footer) — Home / Allocations
+      // / Customers / Menu, in that order, matching `AppNavTab`'s
+      // declaration order exactly (`AppShellScaffold` indexes into it by
+      // `navigationShell.currentIndex`). `indexedStack` keeps all four
+      // branches' Navigators alive at once (an `IndexedStack`, not a
+      // rebuild-on-switch), so each tab keeps its own scroll position
+      // and back stack across tab switches — including a branch's own
+      // nested routes (Lead Detail/Edit, Customer Detail), which is why
+      // those live inside their branch's `routes:` here rather than as
+      // separate top-level routes. Every route declared OUTSIDE this
+      // shell (Reports, Calls, ...) still pushes on the root navigator
+      // as before, over the whole shell — the bar intentionally isn't
+      // part of those.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => AppShellScaffold(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [GoRoute(path: RoutePaths.app, builder: (context, state) => const AppShellScreen())],
+          ),
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: 'edit',
-                builder: (context, state) => LeadFormScreen(leadId: state.pathParameters['id']),
+                path: RoutePaths.leads,
+                builder: (context, state) => const LeadListScreen(),
+                routes: [
+                  // Declared before the `:id` child so a literal
+                  // "create" segment matches this route, not the `:id`
+                  // pattern below.
+                  GoRoute(path: 'create', builder: (context, state) => const LeadFormScreen()),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => LeadDetailScreen(leadId: state.pathParameters['id']!),
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) => LeadFormScreen(leadId: state.pathParameters['id']),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RoutePaths.customers,
+                builder: (context, state) => const CustomersOverviewScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => CustomerDetailScreen(customerId: state.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: RoutePaths.menu, builder: (context, state) => const MenuScreen())],
           ),
         ],
       ),
@@ -113,15 +156,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // Declared before the `:id` child, same reasoning as leads'/
-      // follow-ups' "create" routes above — otherwise a literal
-      // "/app/customers" match would fall through to the `:id` pattern.
-      GoRoute(path: RoutePaths.customers, builder: (context, state) => const CustomersOverviewScreen()),
-      GoRoute(
-        path: '${RoutePaths.customers}/:id',
-        builder: (context, state) => CustomerDetailScreen(customerId: state.pathParameters['id']!),
-      ),
-      GoRoute(path: RoutePaths.menu, builder: (context, state) => const MenuScreen()),
       GoRoute(path: RoutePaths.notifications, builder: (context, state) => const NotificationListScreen()),
       GoRoute(
         path: RoutePaths.calls,
