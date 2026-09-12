@@ -1,16 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/location_service.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../custom_fields/domain/entities/custom_field.dart';
 import '../../../custom_fields/presentation/providers/custom_field_providers.dart';
 import '../../../custom_fields/presentation/widgets/custom_field_form_field.dart';
+import '../../../documents/domain/entities/picked_document_file.dart';
+import '../../../documents/presentation/providers/document_providers.dart';
 import '../../domain/entities/lead_draft.dart';
 import '../../domain/entities/lead_form_state.dart';
 import '../../domain/entities/lead_status.dart';
+import '../controllers/lead_request_context.dart';
 import '../providers/leads_providers.dart';
+
+/// 25MB — matches the real backend limit (documents/validation.py's
+/// MAX_SIZE_BYTES), not the reference screenshot's "2MB" caption, which
+/// doesn't correspond to anything this app actually enforces.
+const _kMaxDocumentBytes = 25 * 1024 * 1024;
 
 /// Create Lead (Phase 5 §3) and Edit Lead (§4) — same form, mode decided
 /// by whether [leadId] is set.
@@ -40,12 +52,20 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
   final _countryController = TextEditingController();
   final _stateController = TextEditingController();
   final _cityController = TextEditingController();
+  final _notesController = TextEditingController();
   String? _sourceId;
   String? _statusId;
   String _priority = 'medium';
   final Map<String, Object?> _customValues = {};
   bool _prefilled = false;
   bool _defaultStatusApplied = false;
+
+  // "Others" section (create-only — see the CollapsibleSection below for
+  // why this doesn't also show up in edit mode).
+  LocationResult? _location;
+  bool _locationBusy = false;
+  String? _locationMessage;
+  final List<PickedDocumentFile> _stagedDocuments = [];
 
   @override
   void initState() {
@@ -64,6 +84,7 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
     _countryController.dispose();
     _stateController.dispose();
     _cityController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -96,6 +117,73 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
     return null;
   }
 
+  Future<void> _grantLocation() async {
+    setState(() {
+      _locationBusy = true;
+      _locationMessage = null;
+    });
+    final result = await ref.read(leadLocationServiceProvider).requestAndGetLocation();
+    if (!mounted) return;
+    setState(() {
+      _locationBusy = false;
+      _location = result;
+      if (result == null) {
+        _locationMessage = 'Location service disabled or permission denied.';
+      }
+    });
+  }
+
+  Future<void> _pickDocument() async {
+    final file = await ref.read(documentFilePickerProvider).pickDocumentFile();
+    if (file == null || !mounted) return;
+    if (file.bytes.length > _kMaxDocumentBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File exceeds the 25MB size limit.')));
+      return;
+    }
+    setState(() => _stagedDocuments.add(file));
+  }
+
+  void _removeDocument(int index) => setState(() => _stagedDocuments.removeAt(index));
+
+  /// Fire-and-forget: the lead itself is already created by the time
+  /// this runs (see the `ref.listen` success handler below), so a note/
+  /// document failure here shouldn't block the user from moving on —
+  /// it's supplementary to the record, not the record itself. Logged,
+  /// not surfaced, same tradeoff FCM push (services/push) makes.
+  void _uploadStagedExtras(String leadId) {
+    final requestContext = resolveLeadContext(ref.read);
+    if (requestContext == null) return;
+
+    final notes = _notesController.text.trim();
+    if (notes.isNotEmpty) {
+      unawaited(
+        ref
+            .read(leadRepositoryProvider)
+            .createNote(
+              accessToken: requestContext.accessToken,
+              workspaceId: requestContext.workspaceId,
+              leadId: leadId,
+              text: notes,
+            )
+            .then((_) {}, onError: (Object e) => AppLogger.warning('Could not save the new lead\'s note: $e')),
+      );
+    }
+
+    for (final file in _stagedDocuments) {
+      unawaited(
+        ref
+            .read(documentRepositoryProvider)
+            .uploadDocument(
+              accessToken: requestContext.accessToken,
+              workspaceId: requestContext.workspaceId,
+              leadId: leadId,
+              file: file,
+            )
+            .then((_) {}, onError: (Object e) => AppLogger.warning('Could not upload a document for the new lead: $e')),
+      );
+    }
+  }
+
   void _submit(List<CustomField> customFields) {
     if (!_formKey.currentState!.validate()) return;
     // Only submit codes the form actually rendered — the backend
@@ -113,6 +201,8 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
       city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
       stateRegion: _stateController.text.trim().isEmpty ? null : _stateController.text.trim(),
       country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
+      latitude: _location?.latitude,
+      longitude: _location?.longitude,
       sourceId: _sourceId,
       statusId: _statusId,
       priority: _priority,
@@ -140,6 +230,9 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
           ref.invalidate(leadDetailControllerProvider(widget.leadId!));
         } else {
           ref.invalidate(leadListControllerProvider);
+          if (_notesController.text.trim().isNotEmpty || _stagedDocuments.isNotEmpty) {
+            _uploadStagedExtras(next.lead!.id);
+          }
         }
         context.pop(next.lead);
       }
@@ -251,6 +344,16 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
                     ],
                   ),
                   ..._buildCustomFieldsSection(customFieldsAsync),
+                  // Location/Documents/Notes only make sense once — on
+                  // create. Editing an existing lead has its own real
+                  // homes for these (Lead Detail's own Documents section
+                  // and activity-feed notes), so this doesn't duplicate
+                  // that UI a second time here (same rule
+                  // DocumentsSection's own docstring states).
+                  if (!widget.isEditing) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    CollapsibleSection(title: 'Others', children: [_buildOthersSection(context)]),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
                   FilledButton(
                     onPressed: (formState.status == LeadFormStatus.submitting || customFieldsAsync.isLoading)
@@ -299,6 +402,86 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
           ),
         ];
       },
+    );
+  }
+
+  /// Location capture, staged document upload, and a note — all three
+  /// only take effect once the lead is actually created (see `_submit`/
+  /// `_uploadStagedExtras`): location rides in the same create request
+  /// as everything else; documents/notes need the resulting lead id, so
+  /// they upload right after, fire-and-forget.
+  Widget _buildOthersSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                _location != null ? 'Location added' : 'Location service disabled',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            if (_location != null)
+              const Icon(Icons.check_circle, color: Colors.green, size: 18)
+            else if (_locationBusy)
+              const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              TextButton(onPressed: _grantLocation, child: const Text('Grant')),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          _location != null
+              ? '${_location!.latitude.toStringAsFixed(5)}, ${_location!.longitude.toStringAsFixed(5)}'
+              : _locationMessage ?? 'Please enable location permission',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text('Documents', style: theme.textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.sm),
+        DashedBorderBox(
+          onTap: _pickDocument,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.file_upload_outlined, color: theme.colorScheme.secondary),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Upload Documents',
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Max file size : 25MB',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+              ),
+            ],
+          ),
+        ),
+        if (_stagedDocuments.isNotEmpty)
+          for (var i = 0; i < _stagedDocuments.length; i++)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.insert_drive_file_outlined),
+              title: Text(_stagedDocuments[i].fileName, overflow: TextOverflow.ellipsis),
+              trailing: IconButton(icon: const Icon(Icons.close), tooltip: 'Remove', onPressed: () => _removeDocument(i)),
+            ),
+        const SizedBox(height: AppSpacing.lg),
+        Text('Notes', style: theme.textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          controller: _notesController,
+          maxLines: 5,
+          maxLength: 800,
+          decoration: const InputDecoration(hintText: 'Add any notes…', alignLabelWithHint: true),
+        ),
+      ],
     );
   }
 }

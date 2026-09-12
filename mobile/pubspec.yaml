@@ -58,6 +58,7 @@ dependencies:
   # dependency of file_picker/dio) but is declared directly since it's
   # now imported directly (features/documents/data/mime_type_resolver.dart).
   mime: ^2.0.0
+  geolocator: ^14.0.3
 
 dev_dependencies:
   flutter_test:

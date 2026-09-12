@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- New Lead's "Others" section — geolocator's location capture on
+         the create form (Runo-reference layout). Coarse is enough for a
+         city-level pin; requested alongside fine since geolocator's own
+         permission dialog covers both together on Android. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="mobile"
         android:name="${applicationName}"

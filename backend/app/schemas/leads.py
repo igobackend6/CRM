@@ -100,6 +100,11 @@ class LeadCreate(BaseModel):
     city: str | None = Field(default=None, max_length=120)
     state_region: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=120)
+    # Device GPS capture on the create form's "Others" section (same
+    # dormant-column story as the address fields above — latitude/
+    # longitude have existed on `leads` since 000008_leads.sql).
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     # {field_code: value} for workspace-defined custom fields
     # (000025_custom_fields.sql). Validated and type-coerced server-side
     # against each field's definition; mandatory fields are enforced on
@@ -124,6 +129,8 @@ class LeadUpdate(BaseModel):
     city: str | None = Field(default=None, max_length=120)
     state_region: str | None = Field(default=None, max_length=120)
     country: str | None = Field(default=None, max_length=120)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     # Partial: only the codes present are written. A value of null clears
     # that field. Mandatory fields are not re-checked on update.
     custom_fields: dict[str, Any] | None = None
@@ -143,6 +150,8 @@ class LeadOut(BaseModel):
     city: str | None = None
     state_region: str | None = None
     country: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     priority: str
     status: LeadStatusOut | None = None
     source: LeadSourceOut | None = None

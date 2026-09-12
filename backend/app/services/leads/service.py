@@ -146,6 +146,8 @@ class LeadService:
             "city": data.get("city"),
             "state_region": data.get("state_region"),
             "country": data.get("country"),
+            "latitude": data.get("latitude"),
+            "longitude": data.get("longitude"),
             # Never trust a client-supplied owner — the creating member
             # becomes both the assignee and the creator (Phase 5 §9).
             "assigned_member_id": member_id,

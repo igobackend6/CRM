@@ -12,6 +12,8 @@ class LeadDraft {
     this.city,
     this.stateRegion,
     this.country,
+    this.latitude,
+    this.longitude,
     this.sourceId,
     this.statusId,
     this.priority = 'medium',
@@ -25,6 +27,8 @@ class LeadDraft {
   final String? city;
   final String? stateRegion;
   final String? country;
+  final double? latitude;
+  final double? longitude;
   final String? sourceId;
   final String? statusId;
   final String priority;
@@ -42,6 +46,8 @@ class LeadDraft {
         if (city != null && city!.isNotEmpty) 'city': city,
         if (stateRegion != null && stateRegion!.isNotEmpty) 'state_region': stateRegion,
         if (country != null && country!.isNotEmpty) 'country': country,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
         if (sourceId != null) 'source_id': sourceId,
         if (statusId != null) 'status_id': statusId,
         'priority': priority,

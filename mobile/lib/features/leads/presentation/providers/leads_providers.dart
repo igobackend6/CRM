@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/location_service.dart';
 import '../../../../services/api/lead_api_data_source.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../customer360/domain/entities/timeline_list_state.dart';
@@ -28,6 +29,11 @@ final leadApiDataSourceProvider = Provider<LeadApiDataSource>((ref) => DioLeadAp
 final leadRepositoryProvider = Provider<LeadRepository>((ref) {
   return LeadRepositoryImpl(ref.watch(leadApiDataSourceProvider));
 });
+
+/// The create form's "Others" section (Runo-reference layout) — a
+/// provider seam over `geolocator` for the same testability reason as
+/// documentFilePickerProvider/documentExternalUrlLauncherProvider.
+final leadLocationServiceProvider = Provider<LocationService>((ref) => GeolocatorLocationService());
 
 final leadListControllerProvider = StateNotifierProvider.autoDispose<LeadListController, LeadListState>((ref) {
   return LeadListController(ref.watch(leadRepositoryProvider), ref);

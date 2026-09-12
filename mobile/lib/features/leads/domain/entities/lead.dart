@@ -19,6 +19,8 @@ class Lead {
     this.city,
     this.stateRegion,
     this.country,
+    this.latitude,
+    this.longitude,
     required this.priority,
     this.status,
     this.source,
@@ -41,6 +43,8 @@ class Lead {
         city: json['city'] as String?,
         stateRegion: json['state_region'] as String?,
         country: json['country'] as String?,
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
         priority: json['priority'] as String? ?? 'medium',
         status: json['status'] != null ? LeadStatus.fromJson(json['status'] as Map<String, dynamic>) : null,
         source: json['source'] != null ? LeadSource.fromJson(json['source'] as Map<String, dynamic>) : null,
@@ -64,6 +68,8 @@ class Lead {
   final String? city;
   final String? stateRegion;
   final String? country;
+  final double? latitude;
+  final double? longitude;
   final String priority;
   final LeadStatus? status;
   final LeadSource? source;
@@ -89,6 +95,8 @@ class Lead {
         city: city,
         stateRegion: stateRegion,
         country: country,
+        latitude: latitude,
+        longitude: longitude,
         priority: priority,
         status: status,
         source: source,
