@@ -20,13 +20,23 @@ class AppShellScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // With the keyboard up (e.g. typing into a field on one of the
+    // tabs), the bottomNavigationBar is pushed off-screen behind it,
+    // but a centerDocked FAB has no bar left to dock to and instead
+    // floats loose above the keyboard, covering whatever's there
+    // (reported: it sat on top of the "Create lead" button). Hiding the
+    // FAB whenever the keyboard is open keeps it tied to the footer's
+    // own visibility instead of floating independently of it.
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: AppBottomNavBar(
         currentTab: AppNavTab.values[navigationShell.currentIndex],
         onSelect: (tab) => _onSelect(context, tab),
       ),
-      floatingActionButton: AppCallFab(onPressed: () => context.push(RoutePaths.dialer)),
+      floatingActionButton:
+          keyboardOpen ? null : AppCallFab(onPressed: () => context.push(RoutePaths.dialer)),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
