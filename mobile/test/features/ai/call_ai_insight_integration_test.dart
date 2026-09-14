@@ -23,7 +23,7 @@ import 'fake_ai_insight_repository.dart';
 /// the (unmodified — §"Do not redesign Call Log") screen.
 Future<void> _pumpCallDetailScreen(WidgetTester tester, {required FakeAiInsightRepository aiInsightRepository}) async {
   final authRepo = FakeAuthRepository()
-    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', email: 'rep@example.com');
+    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', phone: '+919876543210');
   final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme'))];
   final callRepo = FakeCallRepository()..callToReturn = testCall(id: 'call-1', leadName: 'Acme Corp');
 

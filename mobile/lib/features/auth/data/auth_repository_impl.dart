@@ -17,7 +17,8 @@ class AuthRepositoryImpl implements AuthRepository {
     return SessionInfo(
       userId: session.user.id,
       accessToken: session.accessToken,
-      email: session.user.email,
+      phone: session.user.phone,
+      mustChangePassword: session.user.userMetadata?['must_change_password'] == true,
     );
   }
 
@@ -42,13 +43,26 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> signInWithEmailPassword({required String email, required String password}) async {
+  Future<void> signInWithPhonePassword({required String phone, required String password}) async {
     try {
-      await _client.auth.signInWithPassword(email: email, password: password);
+      await _client.auth.signInWithPassword(phone: phone, password: password);
     } on supa.AuthException catch (e) {
       throw AuthException(e.message, cause: e);
     } catch (e) {
       throw NetworkException('Could not reach the sign-in service.', cause: e);
+    }
+  }
+
+  @override
+  Future<void> updatePassword({required String newPassword}) async {
+    try {
+      await _client.auth.updateUser(
+        supa.UserAttributes(password: newPassword, data: {'must_change_password': false}),
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message, cause: e);
+    } catch (e) {
+      throw NetworkException('Could not set your new password.', cause: e);
     }
   }
 

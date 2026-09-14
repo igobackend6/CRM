@@ -9,7 +9,7 @@ import 'package:mobile/features/workspace/domain/entities/workspace_state.dart';
 
 final _user = AppUser(
   id: 'u1',
-  email: 'a@b.com',
+  phone: '+919876543210',
   accessToken: 't1',
   profile: const Profile(id: 'u1', fullName: 'Test User'),
 );
@@ -37,6 +37,28 @@ void main() {
       expect(
         resolveRedirect(auth: const AuthState.unauthenticated(), workspace: const WorkspaceState.loading(), location: RoutePaths.app),
         RoutePaths.login,
+      );
+    });
+
+    test('mustChangePassword -> /change-password', () {
+      expect(
+        resolveRedirect(
+          auth: const AuthState.mustChangePassword(),
+          workspace: const WorkspaceState.loading(),
+          location: RoutePaths.app,
+        ),
+        RoutePaths.changePassword,
+      );
+    });
+
+    test('mustChangePassword already at /change-password -> no redirect', () {
+      expect(
+        resolveRedirect(
+          auth: const AuthState.mustChangePassword(),
+          workspace: const WorkspaceState.loading(),
+          location: RoutePaths.changePassword,
+        ),
+        isNull,
       );
     });
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -6,10 +7,14 @@ import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../domain/entities/auth_state.dart';
+import '../../domain/login_phone_normalizer.dart';
 import '../providers/auth_providers.dart';
 
-/// Deliberately minimal per Phase 4 §9 — no registration, forgot
-/// password, social login, MFA, or biometrics. Architecture, not polish.
+/// Deliberately minimal per Phase 4 §9 — no registration, MFA, or
+/// biometrics. Nobody self-registers: an admin creates every account
+/// from the Team page with an admin-issued password, so there's no
+/// email/OTP/magic-link and no "forgot password" flow either — just the
+/// static line below pointing at the admin.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,12 +24,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -32,14 +37,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     ref.read(authControllerProvider.notifier).signIn(
-          email: _emailController.text.trim(),
+          phone: normalizeLoginPhone(_phoneController.text),
           password: _passwordController.text,
         );
   }
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Email is required.';
-    if (!value.contains('@') || !value.contains('.')) return 'Enter a valid email address.';
+  String? _validatePhone(String? value) {
+    final digits = (value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return 'Mobile number is required.';
+    if (digits.length != 10) return 'Enter a 10-digit mobile number.';
     return null;
   }
 
@@ -88,12 +94,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: AppSpacing.md),
                     ],
                     TextFormField(
-                      controller: _emailController,
+                      controller: _phoneController,
                       enabled: !isLoading,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      decoration: const InputDecoration(labelText: 'Email'),
-                      validator: _validateEmail,
+                      keyboardType: TextInputType.phone,
+                      autofillHints: const [AutofillHints.telephoneNumber],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      decoration: const InputDecoration(labelText: 'Mobile number', prefixText: '+91  '),
+                      validator: _validatePhone,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextFormField(
@@ -115,6 +125,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Sign In'),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Forgot password? Ask your admin to reset it.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),

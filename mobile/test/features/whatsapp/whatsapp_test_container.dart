@@ -12,7 +12,7 @@ import 'fake_message_template_repository.dart';
 
 Future<ProviderContainer> buildWhatsAppTestContainer({FakeMessageTemplateRepository? templateRepository}) async {
   final authRepo = FakeAuthRepository()
-    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', email: 'rep@example.com');
+    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', phone: '+919876543210');
   final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme'))];
 
   final container = ProviderContainer(

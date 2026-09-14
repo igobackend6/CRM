@@ -9,7 +9,14 @@ class FakeAuthRepository implements AuthRepository {
   Profile? profileToReturn;
   Object? profileError;
   Object? signInError;
+  Object? updatePasswordError;
   bool signOutCalled = false;
+  bool updatePasswordCalled = false;
+
+  /// Lets a test control the exact `SessionInfo` a successful sign-in
+  /// produces (e.g. one carrying `mustChangePassword: true`) instead of
+  /// the default synthesized below.
+  SessionInfo Function()? signInWithPhonePasswordOverride;
 
   final _controller = StreamController<void>.broadcast();
 
@@ -26,9 +33,21 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signInWithEmailPassword({required String email, required String password}) async {
+  Future<void> signInWithPhonePassword({required String phone, required String password}) async {
     if (signInError != null) throw signInError!;
-    session = SessionInfo(userId: 'user-1', accessToken: 'token-1', email: email);
+    session = signInWithPhonePasswordOverride?.call() ??
+        SessionInfo(userId: 'user-1', accessToken: 'token-1', phone: phone);
+    _controller.add(null);
+  }
+
+  @override
+  Future<void> updatePassword({required String newPassword}) async {
+    updatePasswordCalled = true;
+    if (updatePasswordError != null) throw updatePasswordError!;
+    final current = session;
+    if (current != null) {
+      session = SessionInfo(userId: current.userId, accessToken: current.accessToken, phone: current.phone);
+    }
     _controller.add(null);
   }
 

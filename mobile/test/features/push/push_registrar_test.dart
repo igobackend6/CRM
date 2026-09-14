@@ -37,7 +37,7 @@ class _FakePushRepo implements PushRepository {
 
 const _user = AppUser(
   id: 'u1',
-  email: 'rep@example.com',
+  phone: '+919876543210',
   accessToken: 'tok-1',
   profile: Profile(id: 'u1', fullName: 'Rep'),
 );

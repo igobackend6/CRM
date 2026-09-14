@@ -22,7 +22,7 @@ Future<void> _pumpConversationListScreen(
   List<GoRoute> extraRoutes = const [],
 }) async {
   final authRepo = FakeAuthRepository()
-    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', email: 'rep@example.com');
+    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', phone: '+919876543210');
   final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme'))];
 
   final router = GoRouter(

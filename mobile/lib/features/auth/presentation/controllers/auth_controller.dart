@@ -38,11 +38,19 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> _establishSession(SessionInfo session) async {
+    // Admin-issued-password model: a forced-change flag blocks
+    // everything else — no profile load, no backend /me check — until
+    // the user sets their own password (`changePassword` below).
+    if (session.mustChangePassword) {
+      state = const AuthState.mustChangePassword();
+      return;
+    }
+
     try {
       final profile = await _repository.loadProfile(session.userId);
       final user = AppUser(
         id: session.userId,
-        email: session.email,
+        phone: session.phone,
         accessToken: session.accessToken,
         profile: profile,
       );
@@ -73,10 +81,10 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> signIn({required String email, required String password}) async {
+  Future<void> signIn({required String phone, required String password}) async {
     state = const AuthState.authenticating();
     try {
-      await _repository.signInWithEmailPassword(email: email, password: password);
+      await _repository.signInWithPhonePassword(phone: phone, password: password);
       final session = _repository.readCurrentSession();
       if (session == null) {
         state = const AuthState.unauthenticated();
@@ -89,6 +97,14 @@ class AuthController extends StateNotifier<AuthState> {
       AppLogger.error('Unexpected sign-in error', error: e);
       state = const AuthState.error('Sign-in failed. Please try again.');
     }
+  }
+
+  /// Called from the forced "set your password" gate. Left in
+  /// `mustChangePassword` state on failure so the screen can show the
+  /// error inline without bouncing the user back to /login.
+  Future<void> changePassword(String newPassword) async {
+    await _repository.updatePassword(newPassword: newPassword);
+    await _restoreFromSession();
   }
 
   Future<void> signOut() async {

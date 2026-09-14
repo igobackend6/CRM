@@ -26,7 +26,7 @@ import 'fake_lead_repository.dart';
 /// exercises the same screen's assignment action.
 Future<void> _pumpLeadDetailScreen(WidgetTester tester, {required FakeLeadRepository leadRepository}) async {
   final authRepo = FakeAuthRepository()
-    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', email: 'rep@example.com');
+    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', phone: '+919876543210');
   final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme'))];
 
   final router = GoRouter(

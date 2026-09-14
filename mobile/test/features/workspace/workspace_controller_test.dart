@@ -30,7 +30,7 @@ void main() {
   group('WorkspaceController (via ProviderContainer)', () {
     test('zero memberships -> none, and clears any stored selection', () async {
       final authRepo = FakeAuthRepository()
-        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', email: 'a@b.com');
+        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', phone: '+911234567890');
       final workspaceRepo = FakeWorkspaceRepository()
         ..membershipsToReturn = []
         ..storedSelectedId = 'leftover-id';
@@ -45,7 +45,7 @@ void main() {
 
     test('one membership -> auto-selected and persisted', () async {
       final authRepo = FakeAuthRepository()
-        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', email: 'a@b.com');
+        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', phone: '+911234567890');
       final ws = testWorkspace('w1', 'Acme');
       final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', ws)];
       final container = buildContainer(authRepo: authRepo, workspaceRepo: workspaceRepo);
@@ -61,7 +61,7 @@ void main() {
 
     test('multiple memberships with no prior selection -> needsSelection', () async {
       final authRepo = FakeAuthRepository()
-        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', email: 'a@b.com');
+        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', phone: '+911234567890');
       final workspaceRepo = FakeWorkspaceRepository()
         ..membershipsToReturn = [
           testMembership('m1', testWorkspace('w1', 'Acme')),
@@ -78,7 +78,7 @@ void main() {
 
     test('selecting a workspace transitions to selected and persists it', () async {
       final authRepo = FakeAuthRepository()
-        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', email: 'a@b.com');
+        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', phone: '+911234567890');
       final target = testMembership('m2', testWorkspace('w2', 'Globex'));
       final workspaceRepo = FakeWorkspaceRepository()
         ..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme')), target];
@@ -98,7 +98,7 @@ void main() {
 
     test('stale persisted selection is cleared and re-resolved', () async {
       final authRepo = FakeAuthRepository()
-        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', email: 'a@b.com');
+        ..session = const SessionInfo(userId: 'u1', accessToken: 't1', phone: '+911234567890');
       final onlyMembership = testMembership('m1', testWorkspace('w1', 'Acme'));
       final workspaceRepo = FakeWorkspaceRepository()
         ..membershipsToReturn = [onlyMembership]

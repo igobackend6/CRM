@@ -7,10 +7,13 @@ import 'route_paths.dart';
 /// "Routing" tests). Returns null to allow the requested location,
 /// otherwise the location to redirect to instead.
 ///
-/// State machine (Phase 4 §8):
+/// State machine (Phase 4 §8, extended for the admin-issued-password
+/// model):
 ///   initializing            -> /splash
 ///   unauthenticated/
 ///   authenticating/error    -> /login
+///   mustChangePassword      -> /change-password (blocks everything
+///     else — no workspace check runs until it clears)
 ///   authenticated + workspace loading -> /splash
 ///   authenticated + workspace none/error/needsSelection -> /workspace
 ///   authenticated + workspace selected -> /app (or any /app/* child —
@@ -31,6 +34,10 @@ String? resolveRedirect({
       auth.status == AuthStatus.error;
   if (hasNoSession) {
     return location == RoutePaths.login ? null : RoutePaths.login;
+  }
+
+  if (auth.status == AuthStatus.mustChangePassword) {
+    return location == RoutePaths.changePassword ? null : RoutePaths.changePassword;
   }
 
   // auth.status == AuthStatus.authenticated from here on.

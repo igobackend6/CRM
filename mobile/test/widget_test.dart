@@ -25,7 +25,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Mobile number'), findsOneWidget);
     expect(find.text('Sign In'), findsOneWidget);
   });
 }

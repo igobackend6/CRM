@@ -6,6 +6,7 @@ import '../../features/app_shell/presentation/screens/app_shell_scaffold.dart';
 import '../../features/app_shell/presentation/screens/app_shell_screen.dart';
 import '../../features/app_shell/presentation/screens/menu_screen.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
+import '../../features/auth/presentation/screens/change_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/calls/presentation/screens/call_detail_screen.dart';
 import '../../features/calls/presentation/screens/call_form_screen.dart';
@@ -69,6 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: RoutePaths.root, builder: (context, state) => const SplashScreen()),
       GoRoute(path: RoutePaths.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: RoutePaths.login, builder: (context, state) => const LoginScreen()),
+      GoRoute(path: RoutePaths.changePassword, builder: (context, state) => const ChangePasswordScreen()),
       GoRoute(path: RoutePaths.workspace, builder: (context, state) => const WorkspaceSelectionScreen()),
       // The bottom-nav shell (Runo-reference footer) — Home / Allocations
       // / Customers / Menu, in that order, matching `AppNavTab`'s

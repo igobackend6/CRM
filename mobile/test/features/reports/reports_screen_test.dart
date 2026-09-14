@@ -18,7 +18,7 @@ import 'fake_reports_repository.dart';
 
 Future<void> _pumpReportsScreen(WidgetTester tester, {required FakeReportsRepository repository, String role = 'manager'}) async {
   final authRepo = FakeAuthRepository()
-    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', email: 'rep@example.com');
+    ..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', phone: '+919876543210');
   final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme'), role: role)];
 
   final router = GoRouter(initialLocation: '/', routes: [GoRoute(path: '/', builder: (context, state) => const ReportsScreen())]);

@@ -4,6 +4,11 @@ class RoutePaths {
   static const String root = '/';
   static const String splash = '/splash';
   static const String login = '/login';
+
+  /// Forced "set your password" gate for the admin-issued-password
+  /// model — reached whenever the session's `must_change_password`
+  /// flag is set (new account or an admin-triggered reset).
+  static const String changePassword = '/change-password';
   static const String workspace = '/workspace';
   static const String app = '/app';
 
