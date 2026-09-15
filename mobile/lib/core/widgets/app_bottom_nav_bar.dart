@@ -79,7 +79,7 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = selected ? AppColors.brandOrange : theme.colorScheme.outline;
+    final color = selected ? AppColors.accent : theme.colorScheme.outline;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -114,7 +114,7 @@ class AppCallFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: onPressed,
-      backgroundColor: AppColors.brandOrange,
+      backgroundColor: AppColors.accent,
       foregroundColor: Colors.white,
       tooltip: 'Calls',
       shape: const CircleBorder(),

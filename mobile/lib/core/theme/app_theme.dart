@@ -5,20 +5,20 @@ import 'app_radius.dart';
 import 'app_shadows.dart';
 import 'app_typography.dart';
 
-/// Material 3 theme built from the real Runo-derived tokens in
+/// Material 3 theme built from the shared design tokens in
 /// app_colors/app_typography/app_radius/app_shadows.dart — see
 /// docs/design/design-tokens.md for where each value came from.
 ///
-/// The overall `ColorScheme` is seeded from `AppColors.brandOrange` (the
-/// literal logo color) so the algorithmically-generated supporting roles
-/// (containers, outlines, surface tones — for which no single real value
-/// exists) stay warm and on-brand rather than defaulting to Material's
-/// generic blue; the handful of roles we DO have an exact real value for
-/// (the CTA button's black, the real error red, real surfaces/text) are
-/// then pinned via `copyWith` so they're never left to the algorithm to
-/// guess. Component themes below make sure every existing screen — none
-/// of which hardcode a `Color(0x...)` outside this directory — inherits
-/// the new look through `Theme.of(context)` alone.
+/// The overall `ColorScheme` is seeded from `AppColors.accent` (the
+/// panel's own primary blue) so the algorithmically-generated supporting
+/// roles (containers, outlines, surface tones — for which no single
+/// token exists) stay on-brand rather than defaulting to Material's
+/// generic purple; the roles we DO have an exact token for (accent/gold,
+/// the real danger red, real surfaces/text) are then pinned via
+/// `copyWith` so they're never left to the algorithm to guess. Component
+/// themes below make sure every existing screen — none of which
+/// hardcode a `Color(0x...)` outside this directory — inherits the new
+/// look through `Theme.of(context)` alone.
 class AppTheme {
   AppTheme._();
 
@@ -29,29 +29,30 @@ class AppTheme {
     final isDark = brightness == Brightness.dark;
 
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.brandOrange,
+      seedColor: AppColors.accent,
       brightness: brightness,
     ).copyWith(
-      primary: isDark ? AppColors.brandOrange : AppColors.ctaBlack,
-      onPrimary: isDark ? AppColors.textPrimary : Colors.white,
-      secondary: AppColors.brandOrange,
-      tertiary: AppColors.actionRed,
-      error: AppColors.error,
+      primary: isDark ? AppColors.accent2 : AppColors.accent,
+      onPrimary: Colors.white,
+      secondary: AppColors.gold,
+      tertiary: AppColors.violet,
+      error: AppColors.danger,
       surface: isDark ? AppColors.surfaceDark : AppColors.surface,
-      onSurface: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+      onSurface: isDark ? AppColors.textHeadingDark : AppColors.textHeading,
       outline: isDark ? AppColors.borderDark : AppColors.border,
-      outlineVariant: isDark ? AppColors.dividerDark : AppColors.divider,
+      outlineVariant: isDark ? AppColors.borderStrongDark : AppColors.borderStrong,
     );
 
     final textTheme = AppTypography.textTheme.apply(
-      bodyColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-      displayColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+      bodyColor: isDark ? AppColors.textHeadingDark : AppColors.textHeading,
+      displayColor: isDark ? AppColors.textHeadingDark : AppColors.textHeading,
     );
 
     final background = isDark ? AppColors.backgroundDark : AppColors.background;
     final surface = isDark ? AppColors.surfaceDark : AppColors.surface;
     final border = isDark ? AppColors.borderDark : AppColors.border;
-    final secondaryText = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final hoverTint = isDark ? AppColors.hoverTintDark : AppColors.hoverTint;
+    final secondaryText = isDark ? AppColors.textBodyDark : AppColors.textBody;
 
     return ThemeData(
       useMaterial3: true,
@@ -83,9 +84,8 @@ class AppTheme {
         ),
       ),
 
-      // The real "Start 10-day free trial" button: solid black (or the
-      // brand orange in dark mode, so it isn't invisible on a dark
-      // surface), 12px radius, 14px/w600 label.
+      // The primary CTA: solid accent blue (a lighter blue in dark mode
+      // so it isn't lost on a dark surface), 12px radius, 14px/w600 label.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: colorScheme.primary,
@@ -105,8 +105,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.standard)),
         ),
       ),
-      // The real "Book a Demo" secondary button: transparent, dark
-      // text/border.
+      // A transparent secondary button: dark text/border.
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.onSurface,
@@ -127,19 +126,18 @@ class AppTheme {
         style: IconButton.styleFrom(foregroundColor: colorScheme.onSurface),
       ),
 
-      // The real `input.form-control`: white surface, 12px radius, a
-      // light neutral border.
+      // White surface, 12px radius, a light neutral border.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.standard),
-          borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.inputBorder),
+          borderSide: BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.standard),
-          borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.inputBorder),
+          borderSide: BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.standard),
@@ -153,11 +151,11 @@ class AppTheme {
         hintStyle: textTheme.bodyMedium?.copyWith(color: secondaryText),
       ),
 
-      // Feature-tile chips (`.feature-btn`): 12px radius, subtle border,
-      // the warm `.active`-state tint for selected chips.
+      // 12px radius, subtle border, the brand's own blue tint for
+      // selected chips.
       chipTheme: ChipThemeData(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.backgroundAlt,
-        selectedColor: isDark ? AppColors.surfaceTintDark : AppColors.surfaceTint,
+        backgroundColor: surface,
+        selectedColor: hoverTint,
         labelStyle: textTheme.labelMedium,
         side: BorderSide(color: border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.standard)),
@@ -171,7 +169,7 @@ class AppTheme {
       ),
 
       dividerTheme: DividerThemeData(
-        color: isDark ? AppColors.dividerDark : AppColors.divider,
+        color: border,
         thickness: 1,
         space: 1,
       ),
@@ -183,7 +181,7 @@ class AppTheme {
       ),
 
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.textPrimary,
+        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.textHeading,
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.standard)),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/logging/app_logger.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/location_service.dart';
 import '../../../../core/widgets/widgets.dart';
@@ -427,7 +428,7 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
             ),
             const SizedBox(width: AppSpacing.sm),
             if (_location != null)
-              const Icon(Icons.check_circle, color: Colors.green, size: 18)
+              const Icon(Icons.check_circle, color: AppColors.success, size: 18)
             else if (_locationBusy)
               const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
             else

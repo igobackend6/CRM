@@ -20,16 +20,18 @@ const Map<String, IconData> _activityIcons = {
 };
 
 // A distinct color per activity category — the multi-hue icon rail seen
-// throughout the real app's UI (docs/design/design-tokens.md) rather
-// than every event type looking identical.
+// throughout the app's UI (docs/design/design-tokens.md) rather than
+// every event type looking identical. Drawn from AppColors.avatarPalette
+// plus accent2, so the rail stays inside the shared design system rather
+// than inventing its own hues.
 const Map<String, Color> _activityColors = {
-  'call': AppColors.brandOrange,
-  'note': Color(0xFF0065F2),
-  'status_change': Color(0xFF5E33EC),
+  'call': AppColors.sky,
+  'note': AppColors.accent,
+  'status_change': AppColors.violet,
   'document': AppColors.success,
-  'follow_up': AppColors.actionRed,
-  'message': Color(0xFF0065F2),
-  'allocation': AppColors.brandInk,
+  'follow_up': AppColors.pink,
+  'message': AppColors.accent2,
+  'allocation': AppColors.gold,
 };
 
 String formatDateTime(DateTime date) {

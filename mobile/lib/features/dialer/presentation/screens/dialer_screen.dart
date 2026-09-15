@@ -114,8 +114,8 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
                 // that coexistence never happens.
                 onPressed: () => context.go(RoutePaths.leadCreate, extra: number.isEmpty ? null : number),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.brandOrange,
-                  side: const BorderSide(color: AppColors.brandOrange),
+                  foregroundColor: AppColors.accent,
+                  side: const BorderSide(color: AppColors.accent),
                 ),
                 icon: const Icon(Icons.person_add_alt_1, size: 18),
                 label: const Text('Create new customer'),
@@ -139,7 +139,7 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
                     ),
                 ],
               ),
-              Container(height: 2, color: AppColors.brandOrange),
+              Container(height: 2, color: AppColors.accent),
               const SizedBox(height: AppSpacing.xl),
               for (var row = 0; row < _kKeys.length; row += 3) ...[
                 if (row > 0) const SizedBox(height: AppSpacing.lg),
@@ -215,7 +215,7 @@ class _CallButton extends StatelessWidget {
       height: 72,
       child: FloatingActionButton(
         heroTag: 'dialer-call',
-        backgroundColor: AppColors.brandOrange,
+        backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         onPressed: onPressed,
         shape: const CircleBorder(),

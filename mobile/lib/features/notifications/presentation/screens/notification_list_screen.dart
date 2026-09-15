@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../domain/entities/app_notification.dart';
@@ -189,7 +190,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
     default:
       switch (notification.relatedEntityType) {
         case 'follow_up':
-          return (Icons.event_note_outlined, const Color(0xFF0065F2));
+          return (Icons.event_note_outlined, AppColors.accent);
         case 'call':
           return (Icons.call_outlined, colorScheme.tertiary);
         default:

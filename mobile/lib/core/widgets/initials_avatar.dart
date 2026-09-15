@@ -14,14 +14,7 @@ class InitialsAvatar extends StatelessWidget {
   final String? name;
   final double size;
 
-  static const List<Color> _palette = [
-    AppColors.brandOrange,
-    AppColors.brandInk,
-    AppColors.actionRed,
-    Color(0xFF5E33EC), // violet — accentGradient's middle stop
-    Color(0xFF0065F2), // blue — accentGradient's end stop
-    AppColors.success,
-  ];
+  static const List<Color> _palette = AppColors.avatarPalette;
 
   String get _initials {
     final trimmed = (name ?? '').trim();
@@ -33,7 +26,7 @@ class InitialsAvatar extends StatelessWidget {
 
   Color get _backgroundColor {
     final trimmed = (name ?? '').trim();
-    if (trimmed.isEmpty) return AppColors.textTertiary;
+    if (trimmed.isEmpty) return AppColors.textDim;
     final hash = trimmed.codeUnits.fold<int>(0, (acc, c) => acc + c);
     return _palette[hash % _palette.length];
   }

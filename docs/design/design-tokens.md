@@ -1,61 +1,69 @@
-# Design tokens — Runo-inspired visual design
+# Design tokens — shared with the admin (web) panel
 
-This document records the exact, real design tokens the mobile app's visual
-design (Flutter theme in `mobile/lib/core/theme/`) is built from, and where
-each one came from. It exists so the tokens in code are traceable and
-auditable, not invented or eyeballed from memory.
+This document records the exact design tokens the mobile app's visual design
+(Flutter theme in `mobile/lib/core/theme/`) is built from, and where each one
+came from. It exists so the tokens in code are traceable and auditable, not
+invented or eyeballed from memory.
 
-**Source**: live inspection of `https://runo.ai` (the public marketing site
-for Runo, a SIM-based call-management CRM) on 2026-09-03, via
-`getComputedStyle()` on the real rendered DOM and the site's own CSS custom
-properties — not a redraw from screenshots. Every value below is quoted
-exactly as extracted; where a screenshot-only observation was used instead
-(because a value wasn't reachable in the live DOM — see the AVIF note below),
-it's marked **(visual estimate)**.
+**Source (current)**: the admin (web) panel's own CSS custom properties, handed
+off 2026-09-15 so the two clients read as one product rather than two
+differently-branded apps — see the color table below. `AppColors` in
+`mobile/lib/core/theme/app_colors.dart` is kept token-for-token with these.
 
-A note on scope: this reproduces a *visual language* (colors, type scale,
-radii, shadows, spacing rhythm) — not Runo's logo, wordmark, copy, imagery,
-or product screens. `mobile/lib/core/theme/app_colors.dart` previously
-carried a comment saying the palette was "not derived from or matching any
-third-party CRM's visual identity" — that was true of the Phase 3
-placeholder theme it described; this document supersedes it.
-
-## Methodology note: AVIF decoding
-
-The site's actual in-app screenshots (phone/browser mockups) are served as
-`.avif` images. This environment's Chromium build fails to `drawImage()`/
-`getImageData()` the top ~150px of at least one of those files (returns
-transparent pixels for that region only, both via `<img>`+canvas and
-`createImageBitmap()`, with or without a CORS-safe `blob:` URL) — a decoder
-bug in this specific environment, not a real property of the image. Where a
-token could only be read from that region, it's a **(visual estimate)** from
-the screenshot instead of a sampled pixel value, called out explicitly below.
+**Source (superseded)**: this document previously derived the palette from
+live inspection of `https://runo.ai` (a SIM-based call-management CRM used
+only as a visual-language reference, not this product's brand) on 2026-09-03.
+That palette (`brandOrange`/`brandInk`/`actionRed`/`ctaBlack`/`accentGradient`,
+etc.) has been fully replaced by the admin-panel tokens below — kept in git
+history, not reproduced here, since none of it is live in code anymore.
+Type scale, radii, shadows, and spacing rhythm below are still the Runo-derived
+values; only color has switched source so far.
 
 ## Color
 
-| Token | Value | Source |
+| Token | Value | Notes |
 |---|---|---|
-| `brandOrange` | `#FF5730` | Logo SVG `<path fill="#FF5730">` (the runo icon mark) |
-| `brandInk` | `#293345` | Logo SVG secondary path fill (wordmark detail) |
-| `actionRed` | `#F44336` | Computed `background-color` of the visible "Start 10-day free trial" *icon accents* (app-store link icons) — `color: rgb(244, 67, 54)` |
-| `ctaBlack` | `#000000` | Computed `background-color` of `.btn-default-dark.btn-highlighted` — the actual highest-emphasis button ("Start 10-day free trial", "Request a Demo") |
-| `textPrimary` | `#111111` | Computed `color` of `h1`–`h5` |
-| `textSecondary` | `#303030` | Computed `color` of nav links / "Login" |
-| `textTertiary` | `#252525` | Computed `color` of dropdown nav items |
-| `surface` | `#FFFFFF` | Computed `background-color` of cards/inputs |
-| `surfaceTint` | `#FCF6F5` | Computed `background-color` of a feature tile's `.active` state (a warm, barely-there tint) |
-| `background` | `#FAFAFA` | Computed `background-color` of `.features-section` |
-| `backgroundAlt` | `#F9F9F9` | Computed `background-color` of `.feature-btn` tiles |
-| `border` | `#DDDDDD` | Computed `border-color` of `.feature-btn` |
-| `inputBorder` | `#DEE2E6` | Computed `border-color` of `input.form-control` |
-| `divider` | `rgba(59,84,80,0.14)` | CSS custom property `--divider-color: #3b545024` |
-| `error` | `#E65757` | CSS custom property `--error-color: rgb(230,87,87)` |
-| `accentGradient` | `linear-gradient(93.43deg, #FF5730 -4.63%, #5E33EC 65.52%, #0065F2 106.84%)` | CSS custom property `--accent-secondary-color` |
+| `accent` | `#1D4ED8` | Primary blue — buttons, links, active nav |
+| `accent2` | `#3B82F6` | Lighter blue, gradient end |
+| `accentBg` | `#EAF0FD` | Blue tint background |
+| `gold` | `#C6960C` | Secondary brand gold |
+| `goldBg` | `#FBF3DC` | Gold tint background |
+| `gradientBrand` | `135deg, #1D4ED8 → #3B82F6` | |
+| `gradientGold` | `135deg, #C6960C → #E3B23C` | |
+| `violet` / `pink` / `sky` | `#7C3AED` / `#DB2777` / `#0EA5E9` | Extra distinct hues — avatar cycle, activity-type icon rail |
+| `textHeading` | `#1F2430` | Headings |
+| `textBody` | `#4B5468` | Body |
+| `textDim` | `#8A93A6` | Secondary |
+| `background` | `#F5F6F8` | Page |
+| `surface` | `#FFFFFF` | Cards |
+| `border` | `#E7E9EE` | |
+| `borderStrong` | `#D8DCE4` | |
+| `success` / `successBg` | `#2E9E5B` / `#E8F7EE` | |
+| `danger` / `dangerBg` | `#E53935` / `#FDECEA` | |
+| `warning` / `warningBg` | `#C6960C` / `#FBF3DC` | Same value as `gold`/`goldBg` by design |
+| `cold` / `coldBg` | `#64748B` / `#F1F5F9` | |
+| `avatarPalette` | `#1D4ED8 · #C6960C · #2E9E5B · #7C3AED · #DB2777 · #0EA5E9` | Cycled by id |
 
-`accentGradient` (orange → violet → blue) is the site's "AI-powered" accent
-— used sparingly in the app for genuinely notable moments (e.g. an
-empty-state or a subtle highlight), never as a primary UI color; this app
-has no AI features to badge with it yet.
+Two corrections made relative to the web panel's current state, flagged by the
+admin during the 2026-09-15 handoff:
+
+- **`highPriority`** (`#DB2777`, the `pink` hue) is a deliberately distinct
+  color, kept apart from `gold`/`warning`. The web panel's `--accent-pink` is
+  currently identical to `--gold`, so a high-priority segment renders the same
+  color as "medium" right beside it in its funnel chart — a flagged bug. This
+  app has no priority-color mapping yet, but should reach for `highPriority`
+  rather than `gold`/`warning` if one is added, so it never reproduces that
+  collision.
+- **`hoverTint`** is fixed to `accentBg` (the brand's own blue tint) rather
+  than the web panel's current `--bg-hover` (`#FBEEE8`, a warm peach left over
+  from Runo's old orange scheme — the one place that palette survived there,
+  and it reads slightly off against the blue everywhere else). This app never
+  had that leftover, so it goes straight to the corrected value.
+
+`*Dark` variants (`backgroundDark`, `surfaceDark`, `textHeadingDark`, etc.) are
+this app's own reasonable extension of the same palette for its dark theme —
+the admin panel has no dark theme, so these aren't a second real source, just
+kept close in hue and adjusted for contrast on a dark surface.
 
 ## Typography
 

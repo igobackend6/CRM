@@ -34,7 +34,7 @@ class AppStatusChip extends StatelessWidget {
       case ChipTone.negative:
         return Theme.of(context).colorScheme.error;
       case ChipTone.info:
-        return const Color(0xFF0065F2); // accentGradient's blue stop
+        return AppColors.accent2;
       case ChipTone.neutral:
         return Theme.of(context).colorScheme.onSurfaceVariant;
     }

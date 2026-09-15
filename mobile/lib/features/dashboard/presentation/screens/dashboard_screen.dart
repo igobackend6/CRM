@@ -114,14 +114,14 @@ class _KpiGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      _KpiTileData('Active leads', summary.totalActiveLeads, Icons.people_outline, AppColors.brandOrange, RoutePaths.leads),
-      _KpiTileData('New leads', summary.newLeads, Icons.person_add_alt_outlined, AppColors.brandOrange, RoutePaths.leads),
+      _KpiTileData('Active leads', summary.totalActiveLeads, Icons.people_outline, AppColors.accent, RoutePaths.leads),
+      _KpiTileData('New leads', summary.newLeads, Icons.person_add_alt_outlined, AppColors.accent, RoutePaths.leads),
       _KpiTileData('Customers', summary.customers, Icons.verified_outlined, AppColors.success, null),
-      _KpiTileData('Pending follow-ups', summary.pendingFollowUps, Icons.event_note_outlined, const Color(0xFF0065F2), RoutePaths.followUps),
+      _KpiTileData('Pending follow-ups', summary.pendingFollowUps, Icons.event_note_outlined, AppColors.accent, RoutePaths.followUps),
       _KpiTileData('Overdue follow-ups', summary.overdueFollowUps, Icons.warning_amber_outlined, Theme.of(context).colorScheme.error, RoutePaths.followUps),
       _KpiTileData('Completed follow-ups', summary.completedFollowUps, Icons.check_circle_outline, AppColors.success, RoutePaths.followUps),
-      _KpiTileData('Total calls', summary.totalCalls, Icons.call_outlined, const Color(0xFF5E33EC), RoutePaths.calls),
-      _KpiTileData("Today's calls", summary.todaysCalls, Icons.today_outlined, const Color(0xFF5E33EC), RoutePaths.calls),
+      _KpiTileData('Total calls', summary.totalCalls, Icons.call_outlined, AppColors.gold, RoutePaths.calls),
+      _KpiTileData("Today's calls", summary.todaysCalls, Icons.today_outlined, AppColors.gold, RoutePaths.calls),
       _KpiTileData('Unread notifications', summary.unreadNotifications, Icons.notifications_none_outlined, AppColors.success, RoutePaths.notifications),
     ];
     // A plain Column-of-Rows rather than GridView.count: a fixed
@@ -321,7 +321,7 @@ class _PeriodAnalyticsSection extends ConsumerWidget {
       ),
       data: (summary) {
         final tiles = [
-          _KpiTileData('Leads created', summary.leadsCreatedInRange, Icons.person_add_alt_outlined, AppColors.brandOrange, RoutePaths.leads),
+          _KpiTileData('Leads created', summary.leadsCreatedInRange, Icons.person_add_alt_outlined, AppColors.accent, RoutePaths.leads),
           _KpiTileData('Converted', summary.convertedLeadsInRange, Icons.verified_outlined, AppColors.success, null),
           _KpiTileData(
             'Conversion rate',
@@ -331,13 +331,13 @@ class _PeriodAnalyticsSection extends ConsumerWidget {
             null,
             displayOverride: '${(summary.conversionRate * 100).round()}%',
           ),
-          _KpiTileData('Calls connected', summary.callsConnectedInRange, Icons.phone_in_talk_outlined, const Color(0xFF5E33EC), RoutePaths.calls),
-          _KpiTileData('Calls completed', summary.callsCompletedInRange, Icons.call_end_outlined, const Color(0xFF5E33EC), RoutePaths.calls),
+          _KpiTileData('Calls connected', summary.callsConnectedInRange, Icons.phone_in_talk_outlined, AppColors.gold, RoutePaths.calls),
+          _KpiTileData('Calls completed', summary.callsCompletedInRange, Icons.call_end_outlined, AppColors.gold, RoutePaths.calls),
           _KpiTileData(
             'Follow-ups completed',
             summary.completedFollowUpsInRange,
             Icons.task_alt_outlined,
-            const Color(0xFF0065F2),
+            AppColors.accent,
             RoutePaths.followUps,
           ),
         ];
@@ -502,11 +502,11 @@ class _CallSummarySection extends ConsumerWidget {
     case 'call':
       return (Icons.call_outlined, colorScheme.secondary);
     case 'follow_up':
-      return (Icons.event_note_outlined, const Color(0xFF0065F2));
+      return (Icons.event_note_outlined, AppColors.pink);
     case 'note':
-      return (Icons.sticky_note_2_outlined, const Color(0xFF0065F2));
+      return (Icons.sticky_note_2_outlined, AppColors.accent);
     case 'allocation':
-      return (Icons.person_pin_circle_outlined, AppColors.brandInk);
+      return (Icons.person_pin_circle_outlined, AppColors.gold);
     case 'notification':
       return (Icons.notifications_outlined, AppColors.success);
     case 'document':
