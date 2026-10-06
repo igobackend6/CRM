@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../ai/presentation/widgets/lead_ai_section.dart';
+import '../../../call_sync/presentation/widgets/lead_recordings_section.dart';
 import '../../../calls/presentation/providers/call_providers.dart';
 import '../../../calls/presentation/screens/call_list_screen.dart' show CallTile;
 import '../../../customer360/domain/entities/timeline_item.dart';
@@ -20,9 +21,12 @@ import '../../../whatsapp/presentation/widgets/whatsapp_send_button.dart';
 import '../../domain/entities/allocation.dart';
 import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_detail_state.dart';
+import '../../domain/lead_edit_access.dart';
 import '../../domain/entities/tag.dart';
+import '../../../workspace/presentation/providers/workspace_providers.dart';
 import '../controllers/lead_request_context.dart';
 import '../providers/leads_providers.dart';
+import '../widgets/lead_contact_actions.dart';
 
 String _formatDateTime(DateTime date) {
   final local = date.toLocal();
@@ -45,13 +49,16 @@ class LeadDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(leadDetailControllerProvider(leadId));
+    final currentMemberId = ref.watch(workspaceControllerProvider.select((w) => w.selected?.memberId));
+    final lead = state.lead;
+    // Editing is only for leads the member created; an admin-allocated lead has no edit icon.
+    final canEdit = state.status == LeadDetailStatus.success && lead != null && canEditLead(lead, currentMemberId);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Lead details'),
         actions: [
-          if (state.status == LeadDetailStatus.success)
-            IconButton(icon: const Icon(Icons.edit), onPressed: () => context.push(RoutePaths.leadEdit(leadId))),
+          if (canEdit) IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit lead', onPressed: () => context.push(RoutePaths.leadEdit(leadId))),
         ],
       ),
       body: _buildBody(context, ref, state),
@@ -129,6 +136,7 @@ class LeadDetailScreen extends ConsumerWidget {
             _CallsSection(leadId: leadId),
             const SizedBox(height: AppSpacing.lg),
             DocumentsSection(leadId: leadId),
+            LeadRecordingsSection(leadId: leadId),
             const SizedBox(height: AppSpacing.lg),
             LeadAiSection(leadId: leadId),
             const SizedBox(height: AppSpacing.lg),
@@ -140,39 +148,9 @@ class LeadDetailScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             _ActivitySection(leadId: leadId),
             const SizedBox(height: AppSpacing.xl),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete lead'),
-              onPressed: () => _confirmDelete(context, ref),
-            ),
             ],
           ),
         );
-    }
-  }
-
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this lead?'),
-        content: const Text('This can only be reversed by an administrator.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    final ok = await ref.read(leadDetailControllerProvider(leadId).notifier).deleteLead();
-    if (!context.mounted) return;
-    if (ok) {
-      ref.invalidate(leadListControllerProvider);
-      context.pop();
-    } else {
-      final message = ref.read(leadDetailControllerProvider(leadId)).errorMessage ?? 'Could not delete this lead.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 }
@@ -203,7 +181,13 @@ class _LeadHeaderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(lead.name, style: Theme.of(context).textTheme.headlineSmall),
+                Row(
+                  children: [
+                    Expanded(child: Text(lead.name, style: Theme.of(context).textTheme.headlineSmall)),
+                    const SizedBox(width: AppSpacing.sm),
+                    LeadContactActions(phone: lead.phone, leadId: lead.id, leadName: lead.name, isCustomer: lead.isCustomer),
+                  ],
+                ),
                 if (status != null) ...[
                   const SizedBox(height: AppSpacing.xs),
                   AppStatusChip.forLeadStatus(name: status.name, stage: status.stage),

@@ -59,13 +59,5 @@ void main() {
       expect(url, 'https://signed.example/d1');
     });
 
-    test('deleteDocument forwards the document id', () async {
-      final dataSource = FakeDocumentApiDataSource();
-      final repo = DocumentRepositoryImpl(dataSource);
-
-      await repo.deleteDocument(accessToken: 't', workspaceId: 'w1', leadId: 'l1', documentId: 'd1');
-
-      expect(dataSource.lastDeletedDocumentId, 'd1');
-    });
   });
 }

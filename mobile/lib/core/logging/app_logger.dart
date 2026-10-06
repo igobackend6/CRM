@@ -10,6 +10,19 @@ enum LogLevel { debug, info, warning, error }
 class AppLogger {
   AppLogger._();
 
+  /// Settings > Enable Log. While true, every line is also kept in a small in-memory buffer so the
+  /// member can copy it from Settings > Troubleshooting and send it to support. Off by default; the
+  /// buffer is never persisted or uploaded.
+  static bool capture = false;
+
+  static const int maxBufferedLines = 500;
+  static final List<String> _buffer = <String>[];
+
+  /// The captured lines, oldest first (empty while [capture] has never been on).
+  static List<String> get bufferedLines => List.unmodifiable(_buffer);
+
+  static void clearBuffer() => _buffer.clear();
+
   static const Map<LogLevel, int> _severity = {
     LogLevel.debug: 500,
     LogLevel.info: 800,
@@ -33,6 +46,10 @@ class AppLogger {
     Object? error,
     StackTrace? stackTrace,
   }) {
+    if (capture) {
+      _buffer.add('${DateTime.now().toIso8601String()} [${level.name.toUpperCase()}] $message${error == null ? '' : ' | $error'}');
+      if (_buffer.length > maxBufferedLines) _buffer.removeRange(0, _buffer.length - maxBufferedLines);
+    }
     developer.log(
       message,
       name: 'CRM',

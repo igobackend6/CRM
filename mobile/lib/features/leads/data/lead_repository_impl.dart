@@ -21,6 +21,12 @@ class LeadRepositoryImpl implements LeadRepository {
   final LeadApiDataSource _dataSource;
 
   @override
+  Future<int> countVisibleLeads({required String accessToken, required String workspaceId, bool? isCustomer}) async {
+    final json = await _dataSource.listLeads(accessToken: accessToken, workspaceId: workspaceId, isCustomer: isCustomer, limit: 1, offset: 0);
+    return json['total'] as int? ?? 0;
+  }
+
+  @override
   Future<LeadPage> listLeads({
     required String accessToken,
     required String workspaceId,
@@ -89,8 +95,23 @@ class LeadRepositoryImpl implements LeadRepository {
   }
 
   @override
-  Future<void> deleteLead({required String accessToken, required String workspaceId, required String leadId}) {
-    return _dataSource.deleteLead(accessToken: accessToken, workspaceId: workspaceId, leadId: leadId);
+  Future<Lead> applyCallOutcome({
+    required String accessToken,
+    required String workspaceId,
+    required String leadId,
+    String? statusId,
+    Map<String, Object?>? customFields,
+  }) async {
+    final json = await _dataSource.updateLead(
+      accessToken: accessToken,
+      workspaceId: workspaceId,
+      leadId: leadId,
+      body: {
+        'status_id': ?statusId,
+        'custom_fields': ?customFields,
+      },
+    );
+    return Lead.fromJson(json);
   }
 
   @override

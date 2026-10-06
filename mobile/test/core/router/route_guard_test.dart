@@ -4,6 +4,7 @@ import 'package:mobile/core/router/route_paths.dart';
 import 'package:mobile/features/auth/domain/entities/app_user.dart';
 import 'package:mobile/features/auth/domain/entities/auth_state.dart';
 import 'package:mobile/features/auth/domain/entities/profile.dart';
+import 'package:mobile/features/onboarding/domain/onboarding_status.dart';
 import 'package:mobile/features/workspace/domain/entities/workspace.dart';
 import 'package:mobile/features/workspace/domain/entities/workspace_state.dart';
 
@@ -18,6 +19,51 @@ final _workspace = Workspace(id: 'w1', name: 'Acme', slug: 'acme');
 final _membership = WorkspaceMembership(memberId: 'm1', workspace: _workspace, roleName: 'team_mate');
 
 void main() {
+  group('resolveRedirect - onboarding', () {
+    const noSession = AuthState.unauthenticated();
+    const anyWorkspace = WorkspaceState.loading();
+
+    test('first launch (unseen) -> /onboarding instead of /login', () {
+      expect(
+        resolveRedirect(auth: noSession, workspace: anyWorkspace, location: RoutePaths.login, onboarding: OnboardingStatus.unseen),
+        RoutePaths.onboarding,
+      );
+    });
+
+    test('unseen user stays on /onboarding', () {
+      expect(
+        resolveRedirect(auth: noSession, workspace: anyWorkspace, location: RoutePaths.onboarding, onboarding: OnboardingStatus.unseen),
+        isNull,
+      );
+    });
+
+    test('flag still being read -> /splash (no flash of slides or login)', () {
+      expect(
+        resolveRedirect(auth: noSession, workspace: anyWorkspace, location: RoutePaths.login, onboarding: OnboardingStatus.loading),
+        RoutePaths.splash,
+      );
+    });
+
+    test('after Get Started (seen) the slides redirect to /login', () {
+      expect(
+        resolveRedirect(auth: noSession, workspace: anyWorkspace, location: RoutePaths.onboarding, onboarding: OnboardingStatus.seen),
+        RoutePaths.login,
+      );
+    });
+
+    test('a signed-in user never sees onboarding, even if unseen', () {
+      expect(
+        resolveRedirect(
+          auth: AuthState.authenticated(_user),
+          workspace: WorkspaceState.selected([_membership], _membership),
+          location: RoutePaths.onboarding,
+          onboarding: OnboardingStatus.unseen,
+        ),
+        RoutePaths.app,
+      );
+    });
+  });
+
   group('resolveRedirect', () {
     test('initializing -> /splash', () {
       expect(

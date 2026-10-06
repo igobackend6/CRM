@@ -37,8 +37,4 @@ class MessageTemplateRepositoryImpl implements MessageTemplateRepository {
     return MessageTemplate.fromJson(json);
   }
 
-  @override
-  Future<void> deleteTemplate({required String accessToken, required String workspaceId, required String templateId}) {
-    return _dataSource.deleteTemplate(accessToken: accessToken, workspaceId: workspaceId, templateId: templateId);
-  }
 }

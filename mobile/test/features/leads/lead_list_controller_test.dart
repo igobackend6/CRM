@@ -183,7 +183,7 @@ void main() {
       addTearDown(keepAlive(container, leadListControllerProvider).close);
       await waitUntil(() => container.read(leadListControllerProvider).status == LeadListStatus.success);
 
-      final result = await container.read(leadListControllerProvider.notifier).runBulkAction(action: LeadBulkAction.delete);
+      final result = await container.read(leadListControllerProvider.notifier).runBulkAction(action: LeadBulkAction.unassign);
 
       expect(result, isNull);
       expect(leadRepo.lastBulkAction, isNull);

@@ -21,8 +21,6 @@ class FakeMessageTemplateRepository implements MessageTemplateRepository {
   MessageTemplate? updateResult;
   Object? updateError;
 
-  Object? deleteError;
-  String? lastDeletedTemplateId;
 
   @override
   Future<List<MessageTemplate>> listTemplates({required String accessToken, required String workspaceId}) async {
@@ -55,9 +53,4 @@ class FakeMessageTemplateRepository implements MessageTemplateRepository {
     return updateResult ?? testTemplate(id: templateId, name: name ?? 'Follow-up', body: body ?? 'Hi {{name}}');
   }
 
-  @override
-  Future<void> deleteTemplate({required String accessToken, required String workspaceId, required String templateId}) async {
-    if (deleteError != null) throw deleteError!;
-    lastDeletedTemplateId = templateId;
-  }
 }

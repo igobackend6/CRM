@@ -28,10 +28,4 @@ abstract class DocumentRepository {
     required String documentId,
   });
 
-  Future<void> deleteDocument({
-    required String accessToken,
-    required String workspaceId,
-    required String leadId,
-    required String documentId,
-  });
 }

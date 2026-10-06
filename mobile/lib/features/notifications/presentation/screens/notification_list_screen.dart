@@ -112,7 +112,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
     final state = ref.watch(notificationListControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Notifications'),
         actions: [
           if (state.unreadCount > 0)

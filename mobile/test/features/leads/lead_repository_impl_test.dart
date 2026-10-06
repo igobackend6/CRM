@@ -43,6 +43,55 @@ void main() {
       expect(dataSource.lastSearch, 'acme');
     });
 
+    test('countVisibleLeads asks for one unfiltered row and returns only the total', () async {
+      final dataSource = FakeLeadApiDataSource()
+        ..listLeadsResponse = {'items': [_leadJson()], 'total': 42, 'limit': 1, 'offset': 0};
+      final repo = LeadRepositoryImpl(dataSource);
+
+      final total = await repo.countVisibleLeads(accessToken: 't', workspaceId: 'w1');
+
+      expect(total, 42);
+      expect(dataSource.lastSearch, isNull);
+    });
+
+    test('countVisibleLeads can be narrowed to customers', () async {
+      final dataSource = FakeLeadApiDataSource()..listLeadsResponse = {'items': <dynamic>[], 'total': 3, 'limit': 1, 'offset': 0};
+      final repo = LeadRepositoryImpl(dataSource);
+
+      final total = await repo.countVisibleLeads(accessToken: 't', workspaceId: 'w1', isCustomer: true);
+
+      expect(total, 3);
+      expect(dataSource.lastIsCustomer, isTrue);
+    });
+
+    test('applyCallOutcome sends only the status and the custom field values, nothing else', () async {
+      final dataSource = FakeLeadApiDataSource()..updateLeadResponse = _leadJson(id: 'l1');
+      final repo = LeadRepositoryImpl(dataSource);
+
+      final lead = await repo.applyCallOutcome(
+        accessToken: 't',
+        workspaceId: 'w1',
+        leadId: 'l1',
+        statusId: 's-conv',
+        customFields: {'interested_in': 'nursery'},
+      );
+
+      expect(dataSource.lastUpdateBody, {
+        'status_id': 's-conv',
+        'custom_fields': {'interested_in': 'nursery'},
+      });
+      expect(lead.id, 'l1');
+    });
+
+    test('applyCallOutcome leaves out whatever was not chosen', () async {
+      final dataSource = FakeLeadApiDataSource()..updateLeadResponse = _leadJson(id: 'l1');
+      final repo = LeadRepositoryImpl(dataSource);
+
+      await repo.applyCallOutcome(accessToken: 't', workspaceId: 'w1', leadId: 'l1', statusId: 's-follow');
+
+      expect(dataSource.lastUpdateBody, {'status_id': 's-follow'});
+    });
+
     test('listLeads forwards every Phase 14 filter to the data source', () async {
       final dataSource = FakeLeadApiDataSource();
       final repo = LeadRepositoryImpl(dataSource);

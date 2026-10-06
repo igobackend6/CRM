@@ -56,7 +56,7 @@ class _FollowUpListScreenState extends ConsumerState<FollowUpListScreen> {
     final state = ref.watch(followUpListControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Follow-ups')),
+      appBar: brandAppBar(title: const Text('Follow-ups')),
       body: _buildBody(state),
     );
   }

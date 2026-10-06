@@ -81,6 +81,29 @@ class PersonalReportOut(ReportRangeOut):
     pipeline: PipelineSnapshot
 
 
+class CallTrendBucket(BaseModel):
+    """One chart bar: the calls that started in `[start, start + step)`.
+    `unique_leads` is distinct leads called *within this bucket* — a lead
+    called in two buckets counts once in each, which is why the response
+    also carries a window-wide `unique_leads` that is NOT the sum."""
+
+    start: datetime
+    calls: int
+    unique_leads: int
+    talk_time_seconds: int
+
+
+class CallTrendsOut(BaseModel):
+    since: datetime
+    until: datetime
+    granularity: str
+    direction: str
+    buckets: list[CallTrendBucket]
+    total_calls: int
+    unique_leads: int
+    total_talk_time_seconds: int
+
+
 class TeamMemberReportRow(BaseModel):
     model_config = ConfigDict(extra="ignore")
 

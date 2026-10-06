@@ -140,3 +140,112 @@ def test_count_filtered_defaults_to_zero_when_nothing_matches():
     repo = CallRepository(client)
 
     assert repo.count_filtered(WORKSPACE_ID) == 0
+
+
+# ---- Analytics hub: list_for_trends ----
+
+
+class _SequencedCallsClient:
+    """Hands out a different response per `.table("calls")` call and
+    records every builder call — the shared FakeSupabaseClient always
+    returns one fixed response per table, which can't express "page 1 is
+    full, page 2 is short" or let a test see which filters were applied."""
+
+    def __init__(self, pages):
+        self._pages = list(pages)
+        self.builders = []
+
+    def table(self, name):
+        assert name == "calls"
+        response = FakeResponse(data=self._pages.pop(0) if self._pages else [])
+        builder = _RecordingBuilder(response)
+        self.builders.append(builder)
+        return builder
+
+
+class _RecordingBuilder:
+    def __init__(self, response):
+        self._response = response
+        self.calls = []
+
+    def __getattr__(self, name):
+        def _record(*args, **kwargs):
+            self.calls.append((name, args))
+            return self
+
+        return _record
+
+    def execute(self):
+        return self._response
+
+
+def _trend_row(**overrides):
+    row = {"started_at": "2026-09-24T05:30:00+00:00", "state": "ENDED", "lead_id": str(LEAD_ID), "duration_seconds": 60}
+    row.update(overrides)
+    return row
+
+
+_MEMBER = str(uuid4())
+_SINCE = "2026-09-24T00:00:00+00:00"
+_UNTIL = "2026-09-25T00:00:00+00:00"
+
+
+def test_list_for_trends_returns_a_short_first_page_in_one_query():
+    client = _SequencedCallsClient([[_trend_row(), _trend_row()]])
+
+    rows = CallRepository(client).list_for_trends(
+        WORKSPACE_ID, agent_member_id=_MEMBER, since=_SINCE, until=_UNTIL
+    )
+
+    assert len(rows) == 2
+    assert len(client.builders) == 1
+
+
+def test_list_for_trends_pages_until_a_short_page_so_a_busy_month_is_not_truncated():
+    """PostgREST caps one response at 1000 rows; a page of exactly 1000
+    means "there may be more", so the repository must ask again."""
+    client = _SequencedCallsClient([[_trend_row()] * 1000, [_trend_row()] * 3])
+
+    rows = CallRepository(client).list_for_trends(
+        WORKSPACE_ID, agent_member_id=_MEMBER, since=_SINCE, until=_UNTIL
+    )
+
+    assert len(rows) == 1003
+    assert len(client.builders) == 2
+    # The second query must ask for the next window of rows, not repeat page 1.
+    assert ("range", (1000, 1999)) in client.builders[1].calls
+
+
+def test_list_for_trends_stops_after_an_exactly_full_final_page_returns_empty():
+    client = _SequencedCallsClient([[_trend_row()] * 1000, []])
+
+    rows = CallRepository(client).list_for_trends(
+        WORKSPACE_ID, agent_member_id=_MEMBER, since=_SINCE, until=_UNTIL
+    )
+
+    assert len(rows) == 1000
+    assert len(client.builders) == 2
+
+
+def test_list_for_trends_only_filters_on_direction_when_one_is_given():
+    all_client = _SequencedCallsClient([[]])
+    CallRepository(all_client).list_for_trends(WORKSPACE_ID, agent_member_id=_MEMBER, since=_SINCE, until=_UNTIL)
+    inbound_client = _SequencedCallsClient([[]])
+    CallRepository(inbound_client).list_for_trends(
+        WORKSPACE_ID, agent_member_id=_MEMBER, since=_SINCE, until=_UNTIL, direction="inbound"
+    )
+
+    assert not any(name == "eq" and args[0] == "direction" for name, args in all_client.builders[0].calls)
+    assert ("eq", ("direction", "inbound")) in inbound_client.builders[0].calls
+
+
+def test_list_for_trends_is_scoped_to_the_workspace_agent_and_window():
+    client = _SequencedCallsClient([[]])
+
+    CallRepository(client).list_for_trends(WORKSPACE_ID, agent_member_id=_MEMBER, since=_SINCE, until=_UNTIL)
+
+    calls = client.builders[0].calls
+    assert ("eq", ("workspace_id", str(WORKSPACE_ID))) in calls
+    assert ("eq", ("agent_member_id", _MEMBER)) in calls
+    assert ("gte", ("started_at", _SINCE)) in calls
+    assert ("lt", ("started_at", _UNTIL)) in calls

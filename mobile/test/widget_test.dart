@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/realtime/realtime_providers.dart';
+import 'package:mobile/features/activity/presentation/providers/activity_providers.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_providers.dart';
 import 'package:mobile/features/workspace/presentation/providers/workspace_providers.dart';
 import 'package:mobile/main.dart';
 
 import 'core/realtime/fake_realtime_service.dart';
+import 'features/activity/fake_activity_repository.dart';
 import 'features/auth/fake_auth_repository.dart';
 import 'features/workspace/fake_workspace_repository.dart';
 import 'services/api/fake_me_api_data_source.dart';
@@ -19,6 +21,7 @@ void main() {
           meApiDataSourceProvider.overrideWithValue(FakeMeApiDataSource()),
           workspaceRepositoryProvider.overrideWithValue(FakeWorkspaceRepository()),
           realtimeServiceProvider.overrideWithValue(FakeRealtimeService()),
+          activityRepositoryProvider.overrideWithValue(FakeActivityRepository()),
         ],
         child: const MyApp(),
       ),

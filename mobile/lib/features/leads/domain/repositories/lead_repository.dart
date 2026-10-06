@@ -35,6 +35,11 @@ abstract class LeadRepository {
     int offset = 0,
   });
 
+  /// How many leads the caller can see in total (assigned to them or created by them, or all of
+  /// them for a manager), with no filter applied — one cheap request for the Allocations header's
+  /// "shown/total" badge. [isCustomer] narrows it to customers (or non-customers).
+  Future<int> countVisibleLeads({required String accessToken, required String workspaceId, bool? isCustomer});
+
   Future<Lead> getLead({required String accessToken, required String workspaceId, required String leadId});
 
   Future<Lead> createLead({required String accessToken, required String workspaceId, required LeadDraft draft});
@@ -46,7 +51,16 @@ abstract class LeadRepository {
     required LeadDraft draft,
   });
 
-  Future<void> deleteLead({required String accessToken, required String workspaceId, required String leadId});
+  /// After a call: sets only the lead's status and (optionally) custom field values, leaving every
+  /// other field as it is (the backend PATCH is partial). [statusId] null leaves the status alone;
+  /// [customFields] is `{field_code: value}`.
+  Future<Lead> applyCallOutcome({
+    required String accessToken,
+    required String workspaceId,
+    required String leadId,
+    String? statusId,
+    Map<String, Object?>? customFields,
+  });
 
   // ---- conversion (Phase 18) ----
 

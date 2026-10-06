@@ -43,6 +43,44 @@ class LeadFilters {
 
   bool get isNotEmpty => !isEmpty;
 
+  /// Same filters with only the status swapped (null = any status) — the
+  /// Allocations header's status dropdown changes just this one dimension.
+  LeadFilters withStatus(String? id) => LeadFilters(
+        statusId: id,
+        sourceId: sourceId,
+        assignedMemberId: assignedMemberId,
+        priority: priority,
+        isCustomer: isCustomer,
+        createdFrom: createdFrom,
+        createdTo: createdTo,
+        tagId: tagId,
+      );
+
+  /// Same filters with only the customer flag swapped (the Customers tab pins this to true).
+  LeadFilters withIsCustomer(bool? value) => LeadFilters(
+        statusId: statusId,
+        sourceId: sourceId,
+        assignedMemberId: assignedMemberId,
+        priority: priority,
+        isCustomer: value,
+        createdFrom: createdFrom,
+        createdTo: createdTo,
+        tagId: tagId,
+      );
+
+  /// Same filters with only the created-date window swapped (both null =
+  /// no date limit) — the Allocations date chips change just this pair.
+  LeadFilters withDates({DateTime? from, DateTime? to}) => LeadFilters(
+        statusId: statusId,
+        sourceId: sourceId,
+        assignedMemberId: assignedMemberId,
+        priority: priority,
+        isCustomer: isCustomer,
+        createdFrom: from,
+        createdTo: to,
+        tagId: tagId,
+      );
+
   /// Number of active filter dimensions — drives the Lead List app bar's
   /// filter-count badge (§"active-filter indicator/count").
   int get activeCount => [statusId, sourceId, assignedMemberId, priority, isCustomer, createdFrom, createdTo, tagId]

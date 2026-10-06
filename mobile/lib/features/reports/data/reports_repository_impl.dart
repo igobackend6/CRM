@@ -1,4 +1,5 @@
 import '../../../services/api/reports_api_data_source.dart';
+import '../domain/entities/call_trends.dart';
 import '../domain/entities/personal_report.dart';
 import '../domain/entities/pipeline_report.dart';
 import '../domain/entities/team_report.dart';
@@ -65,5 +66,25 @@ class ReportsRepositoryImpl implements ReportsRepository {
       until: until,
     );
     return PipelineReport.fromJson(json);
+  }
+
+  @override
+  Future<CallTrends> getCallTrends({
+    required String accessToken,
+    required String workspaceId,
+    required DateTime since,
+    required DateTime until,
+    required CallTrendGranularity granularity,
+    required CallTrendDirection direction,
+  }) async {
+    final json = await _dataSource.getCallTrends(
+      accessToken: accessToken,
+      workspaceId: workspaceId,
+      since: since,
+      until: until,
+      granularity: granularity.apiValue,
+      direction: direction.apiValue,
+    );
+    return CallTrends.fromJson(json);
   }
 }

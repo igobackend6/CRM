@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
+import '../../../../core/widgets/brand_app_bar.dart';
 
 /// Landing point for the bottom nav's Menu tab — the grouped-list
 /// pattern the real Runo app uses for its own Menu screen
@@ -22,11 +24,18 @@ class MenuScreen extends ConsumerWidget {
     final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Menu')),
+      appBar: brandAppBar(title: const Text('Menu')),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         children: [
           const _MenuGroupLabel('WORKSPACE'),
+          ListTile(
+            key: const Key('menu-call-history'),
+            leading: const Icon(Icons.call_outlined),
+            title: const Text('Call History'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(RoutePaths.calls),
+          ),
           ListTile(
             leading: const Icon(Icons.bar_chart_outlined),
             title: const Text('Reports'),
@@ -57,6 +66,13 @@ class MenuScreen extends ConsumerWidget {
             onTap: () => context.push(RoutePaths.notifications),
           ),
           ListTile(
+            key: const Key('menu-settings'),
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(RoutePaths.settings),
+          ),
+          ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Sign out'),
             onTap: () => ref.read(authControllerProvider.notifier).signOut(),
@@ -78,7 +94,7 @@ class _MenuGroupLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xs),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.outline),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textDim, letterSpacing: 0.8),
       ),
     );
   }

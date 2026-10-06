@@ -168,8 +168,10 @@ void main() {
     expect(find.text('Change'), findsOneWidget);
     expect(find.text('Convert to Customer'), findsOneWidget);
 
-    // The delete action further down the screen is untouched too.
-    await tester.dragUntilVisible(find.text('Delete lead'), find.byType(ListView), const Offset(0, -300));
-    expect(find.text('Delete lead'), findsOneWidget);
+    // Deleting a lead is an admin-only action (done in the admin web): the app offers no delete.
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete lead'), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
   });
 }

@@ -32,12 +32,6 @@ abstract class DocumentApiDataSource {
     required String documentId,
   });
 
-  Future<void> deleteDocument({
-    required String accessToken,
-    required String workspaceId,
-    required String leadId,
-    required String documentId,
-  });
 }
 
 class DioDocumentApiDataSource implements DocumentApiDataSource {
@@ -107,17 +101,4 @@ class DioDocumentApiDataSource implements DocumentApiDataSource {
     }
   }
 
-  @override
-  Future<void> deleteDocument({
-    required String accessToken,
-    required String workspaceId,
-    required String leadId,
-    required String documentId,
-  }) async {
-    try {
-      await _dio.delete<void>('${_base(workspaceId, leadId)}/$documentId', options: ApiClient.authOptions(accessToken));
-    } on DioException catch (e) {
-      throw mapDioExceptionToAppException(e);
-    }
-  }
 }

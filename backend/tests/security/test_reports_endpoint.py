@@ -196,3 +196,72 @@ def test_personal_report_custom_range_without_bounds_is_a_422():
     _install(is_member=True)
     response = client_.get(f"/api/v1/workspaces/{WORKSPACE_ID}/reports/personal", params={"range": "custom"})
     assert response.status_code == 422
+
+
+# ---- GET /reports/call-trends — plain membership, the caller's own calls ----
+
+_TRENDS_URL = f"/api/v1/workspaces/{WORKSPACE_ID}/reports/call-trends"
+_TRENDS_PARAMS = {"since": "2026-09-23T18:30:00Z", "until": "2026-09-24T18:30:00Z", "granularity": "hour"}
+
+
+def test_call_trends_requires_authentication(client):
+    app.dependency_overrides.clear()
+    assert client.get(_TRENDS_URL, params=_TRENDS_PARAMS).status_code == 401
+
+
+def test_call_trends_denied_for_a_non_member(client):
+    _install(is_member=False)
+    assert client.get(_TRENDS_URL, params=_TRENDS_PARAMS).status_code == 403
+
+
+def test_call_trends_available_without_reports_read_permission(client):
+    """A team_mate never has `reports.read`, but their own call trends are
+    their own data — same gate as `/reports/personal`."""
+    _install(is_member=True, has_reports_permission=False)
+
+    response = client.get(_TRENDS_URL, params=_TRENDS_PARAMS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {
+        "since", "until", "granularity", "direction", "buckets", "total_calls", "unique_leads", "total_talk_time_seconds",
+    }
+    assert len(body["buckets"]) == 24
+    assert body["direction"] == "all"
+
+
+def test_call_trends_scopes_to_the_callers_own_member_row(client):
+    """Must filter by the current member, not just rely on RLS — a
+    manager's RLS view spans the whole workspace, and this endpoint is
+    the *personal* trend."""
+    fake_client = _install(is_member=True)
+
+    client.get(_TRENDS_URL, params=_TRENDS_PARAMS)
+
+    assert ("current_member_id", {"p_workspace_id": WORKSPACE_ID}) in fake_client.rpc_calls
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {**_TRENDS_PARAMS, "granularity": "week"},
+        {**_TRENDS_PARAMS, "direction": "sideways"},
+        {"until": _TRENDS_PARAMS["until"]},  # missing since
+        {"since": _TRENDS_PARAMS["since"]},  # missing until
+    ],
+)
+def test_call_trends_rejects_malformed_parameters(client, params):
+    _install(is_member=True)
+    assert client.get(_TRENDS_URL, params=params).status_code == 422
+
+
+def test_call_trends_rejects_a_reversed_window(client):
+    _install(is_member=True)
+    params = {**_TRENDS_PARAMS, "since": _TRENDS_PARAMS["until"], "until": _TRENDS_PARAMS["since"]}
+    assert client.get(_TRENDS_URL, params=params).status_code == 422
+
+
+def test_call_trends_rejects_a_window_too_long_for_the_granularity(client):
+    _install(is_member=True)
+    params = {**_TRENDS_PARAMS, "since": "2026-01-01T00:00:00Z", "until": "2026-09-01T00:00:00Z"}
+    assert client.get(_TRENDS_URL, params=params).status_code == 422

@@ -73,7 +73,7 @@ class _CallFormScreenState extends ConsumerState<CallFormScreen> {
       // (route_paths.dart's callCreateForLead) — this only shows if
       // something navigated here without one.
       return Scaffold(
-        appBar: AppBar(title: const Text('Log a call')),
+        appBar: brandAppBar(title: const Text('Log a call')),
         body: const Center(child: Text('Open this from a lead\'s Calls section.')),
       );
     }
@@ -90,7 +90,7 @@ class _CallFormScreenState extends ConsumerState<CallFormScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Log a call')),
+      appBar: brandAppBar(title: const Text('Log a call')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Form(

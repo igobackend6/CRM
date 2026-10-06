@@ -5,6 +5,9 @@ class RoutePaths {
   static const String splash = '/splash';
   static const String login = '/login';
 
+  /// First-launch intro slides — shown once per install, before login.
+  static const String onboarding = '/onboarding';
+
   /// Forced "set your password" gate for the admin-issued-password
   /// model — reached whenever the session's `must_change_password`
   /// flag is set (new account or an admin-triggered reset).
@@ -46,6 +49,20 @@ class RoutePaths {
   // Home/Allocations reuse existing routes (app shell, leads); Customers
   // above and Menu here are new landing points the footer needed.
   static const String menu = '/app/menu';
+
+  // Menu > Settings, and its sub-screens (the other settings are pickers / switches on the
+  // Settings screen itself, so they have no route).
+  static const String settings = '/app/settings';
+  static const String troubleshooting = '/app/settings/troubleshooting';
+  static const String appSecurity = '/app/settings/security';
+  static const String connectedSim = '/app/settings/sim';
+  static const String defaultDialer = '/app/settings/default-dialer';
+  static const String callSync = '/app/settings/call-sync';
+  static const String notSync = '/app/settings/not-sync';
+  static const String neverAttended = '/app/settings/never-attended';
+
+  /// Share > Sales CRM on a call recording: pick the call it belongs to.
+  static const String importRecording = '/app/import-recording';
 
   // The bottom nav's center call FAB (docs/design/design-tokens.md) —
   // a full-screen dialer, matching the reference's own full-screen (no
@@ -101,4 +118,12 @@ class RoutePaths {
   // three separate routes — there is no per-report deep-link need (no
   // notification or external link ever points at a specific report tab).
   static const String reports = '/app/reports';
+
+  // Analytics hub — the floating tab on Home opens `analytics`; its three
+  // areas are nested routes. All outside the bottom-nav shell (full-screen
+  // like Reports), so `push` from the hub is the right call.
+  static const String analytics = '/app/analytics';
+  static const String analyticsCalls = '/app/analytics/calls';
+  static const String analyticsCustomers = '/app/analytics/customers';
+  static const String analyticsUsers = '/app/analytics/users';
 }

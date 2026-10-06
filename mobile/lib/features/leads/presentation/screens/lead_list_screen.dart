@@ -6,6 +6,8 @@ import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../pipeline/presentation/providers/pipeline_providers.dart';
+import '../../domain/allocation_range.dart';
+import '../../domain/lead_list_mode.dart';
 import '../../domain/entities/bulk_action_result.dart';
 import '../../domain/entities/lead.dart';
 import '../../domain/entities/lead_bulk_action.dart';
@@ -15,15 +17,30 @@ import '../../domain/entities/lead_list_state.dart';
 import '../../domain/entities/lead_status.dart';
 import '../../domain/entities/member_summary.dart';
 import '../controllers/lead_import_controller.dart';
+import '../controllers/lead_list_controller.dart';
+import '../providers/allocations_providers.dart';
 import '../providers/leads_providers.dart';
+import '../widgets/allocation_range_chips.dart';
+import '../widgets/allocations_empty_view.dart';
+import '../widgets/allocations_header.dart';
+import '../widgets/lead_contact_actions.dart';
 
-/// Lead List (Phase 5 §2) — search, loading/empty/error, pull-to-refresh,
-/// basic pagination (load-more on scroll). Phase 13 adds bulk selection/
-/// actions and a CSV import entry point on top of this same screen
-/// (§"Extend the existing Leads/Pipeline UI rather than creating a
-/// separate data-management architecture").
+/// The paged lead list behind two tabs (Phase 5 §2's Lead List, restyled to the reference).
+///
+/// * **Allocations** ([LeadListMode.allocations]): every lead the member can see. A plain title with a
+///   search icon, the date chips and an illustrated empty state. Leads an admin assigns from the admin
+///   web land here through the same `leads` rows: RLS `leads_select` shows a member everything assigned
+///   to them or created by them, and they can still add their own.
+/// * **Customers** ([LeadListMode.customers]): the same list narrowed to converted leads, with the full
+///   header (status selector, search, filters, pipeline board, more) and rows that open Customer 360.
+///
+/// Search, loading/empty/error, pull-to-refresh, basic pagination (load-more on scroll). Phase 13 adds
+/// bulk selection/actions and a CSV import entry point on top of this same screen (§"Extend the existing
+/// Leads/Pipeline UI rather than creating a separate data-management architecture").
 class LeadListScreen extends ConsumerStatefulWidget {
-  const LeadListScreen({super.key});
+  const LeadListScreen({super.key, this.mode = LeadListMode.allocations});
+
+  final LeadListMode mode;
 
   @override
   ConsumerState<LeadListScreen> createState() => _LeadListScreenState();
@@ -32,6 +49,13 @@ class LeadListScreen extends ConsumerStatefulWidget {
 class _LeadListScreenState extends ConsumerState<LeadListScreen> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
+  bool _searchOpen = false;
+
+  bool get _isCustomers => widget.mode == LeadListMode.customers;
+
+  /// The controller behind this tab: the customers tab has its own, with `isCustomer` pinned.
+  AutoDisposeStateNotifierProvider<LeadListController, LeadListState> get _provider =>
+      _isCustomers ? customerListControllerProvider : leadListControllerProvider;
 
   @override
   void initState() {
@@ -42,7 +66,7 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      ref.read(leadListControllerProvider.notifier).loadMore();
+      ref.read(_provider.notifier).loadMore();
     }
   }
 
@@ -54,89 +78,140 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
     super.dispose();
   }
 
+  void _toggleSearch() {
+    setState(() => _searchOpen = !_searchOpen);
+    if (!_searchOpen && _searchController.text.isNotEmpty) {
+      _searchController.clear();
+      ref.read(_provider.notifier).updateSearch('');
+    }
+  }
+
+  Future<void> _pickCustomRange(BuildContext context, LeadFilters filters) async {
+    final now = DateTime.now();
+    final from = filters.createdFrom;
+    final to = filters.createdTo;
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 10),
+      lastDate: now,
+      initialDateRange: from != null && to != null ? DateTimeRange(start: from, end: to) : null,
+    );
+    if (picked == null || !mounted) return;
+    await ref.read(_provider.notifier).applyFilters(
+          filters.withDates(from: DateTime(picked.start.year, picked.start.month, picked.start.day), to: endOfDay(picked.end)),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(leadListControllerProvider);
+    final state = ref.watch(_provider);
 
     return Scaffold(
-      appBar: state.selectionMode ? _buildSelectionAppBar(context, state) : _buildDefaultAppBar(context),
+      appBar: state.selectionMode
+          ? _buildSelectionAppBar(context, state)
+          : (_isCustomers ? _buildHeader(context, state) : _buildTitleHeader()),
       body: Column(
         children: [
-          if (!state.selectionMode)
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search by name, phone, or email',
-                  isDense: true,
+          if (!state.selectionMode) ...[
+            if (_searchOpen)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: 'Search by name, phone, or email',
+                    isDense: true,
+                  ),
+                  onChanged: (value) => ref.read(_provider.notifier).updateSearch(value),
                 ),
-                onChanged: (value) => ref.read(leadListControllerProvider.notifier).updateSearch(value),
               ),
-            ),
+            if (!_isCustomers) _buildRangeChips(context, state),
+          ],
           Expanded(child: _buildBody(state)),
         ],
       ),
       floatingActionButton: state.selectionMode
           ? null
-          : FloatingActionButton(
-              onPressed: () => context.push(RoutePaths.leadCreate),
-              tooltip: 'Add lead',
-              child: const Icon(Icons.add),
-            ),
+          : (_isCustomers
+              // Opens the same create-lead form Allocations uses, not a separate "create customer" flow:
+              // there is no direct-to-customer create in this data model (a lead becomes a customer
+              // through conversion, a business event with its own gate; see leads.is_customer's CHECK
+              // constraint in 000008_leads.sql). Its own hero tag because both tabs are alive at once.
+              ? FloatingActionButton(
+                  heroTag: 'customers-create-lead',
+                  tooltip: 'New lead',
+                  onPressed: () => context.push(RoutePaths.leadCreate),
+                  child: const Icon(Icons.add),
+                )
+              : FloatingActionButton(
+                  onPressed: () => context.push(RoutePaths.leadCreate),
+                  tooltip: 'Add lead',
+                  child: const Icon(Icons.add),
+                )),
     );
   }
 
-  AppBar _buildDefaultAppBar(BuildContext context) {
-    final activeCount = ref.watch(leadListControllerProvider.select((s) => s.filters.activeCount));
-    return AppBar(
-      title: const Text('Leads'),
-      actions: [
-        IconButton(
-          icon: Badge(
-            label: Text('$activeCount'),
-            isLabelVisible: activeCount > 0,
-            child: const Icon(Icons.filter_list),
-          ),
-          tooltip: 'Filter leads',
-          onPressed: () => _openFilterSheet(context),
-        ),
-        IconButton(
-          icon: const Icon(Icons.upload_file_outlined),
-          tooltip: 'Import leads from CSV',
-          onPressed: () => _openImportSheet(context),
-        ),
-        IconButton(
-          icon: const Icon(Icons.checklist_outlined),
-          tooltip: 'Select leads',
-          onPressed: () => ref.read(leadListControllerProvider.notifier).enterSelectionMode(),
-        ),
-        // Phase 12's pipeline board — one entry point from the existing
-        // Lead List app bar, no shell redesign.
-        IconButton(
-          icon: const Icon(Icons.view_column_outlined),
-          tooltip: 'Pipeline view',
-          onPressed: () => context.push(RoutePaths.pipeline),
-        ),
-      ],
+  Widget _buildRangeChips(BuildContext context, LeadListState state) {
+    final notifier = ref.read(_provider.notifier);
+    final filters = state.filters;
+    return AllocationRangeChips(
+      selected: allocationRangeOf(filters, DateTime.now()),
+      customLabel: allocationRangeLabel(filters),
+      onOverall: () => notifier.applyFilters(filters.withDates()),
+      onLast30Days: () => notifier.applyFilters(filters.withDates(from: last30DaysStart(DateTime.now()))),
+      onSelectRange: () => _pickCustomRange(context, filters),
     );
   }
+
+  PreferredSizeWidget _buildHeader(BuildContext context, LeadListState state) {
+    final statuses = ref.watch(leadReferenceDataProvider).valueOrNull?.statuses ?? const <LeadStatus>[];
+    final total = ref.watch(customersTotalProvider).valueOrNull;
+    return AllocationsHeader(
+      searchTooltip: 'Search customers',
+      statuses: statuses,
+      selectedStatusId: state.filters.statusId,
+      shownCount: state.total,
+      totalCount: total,
+      // The status is shown by the selector and the customer flag is what this tab is, so neither
+      // counts toward the filter badge.
+      activeFilterCount: state.filters.activeCount - (state.filters.statusId != null ? 1 : 0) - (state.filters.isCustomer != null ? 1 : 0),
+      searchOpen: _searchOpen,
+      onStatusSelected: (id) => ref.read(_provider.notifier).applyFilters(state.filters.withStatus(id)),
+      onToggleSearch: _toggleSearch,
+      onOpenFilters: () => _openFilterSheet(context),
+      // Phase 12's pipeline board: one entry point from the existing
+      // Lead List header, no shell redesign.
+      onOpenPipeline: () => context.push(RoutePaths.pipeline),
+      onMenuAction: (action) {
+        switch (action) {
+          case AllocationsMenuAction.select:
+            ref.read(_provider.notifier).enterSelectionMode();
+          case AllocationsMenuAction.importCsv:
+            _openImportSheet(context);
+        }
+      },
+    );
+  }
+
+  PreferredSizeWidget _buildTitleHeader() => AllocationsTitleHeader(searchOpen: _searchOpen, onToggleSearch: _toggleSearch);
 
   Future<void> _openFilterSheet(BuildContext context) async {
-    final current = ref.read(leadListControllerProvider).filters;
+    final current = ref.read(_provider).filters;
     final result = await showModalBottomSheet<LeadFilters>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _FilterSheet(initialFilters: current),
+      builder: (_) => _FilterSheet(initialFilters: current, showCustomerFilter: !_isCustomers),
     );
     if (result == null || !context.mounted) return;
-    await ref.read(leadListControllerProvider.notifier).applyFilters(result);
+    // Clear all / a loaded saved view must not un-pin the customer flag on the Customers tab.
+    await ref.read(_provider.notifier).applyFilters(_isCustomers ? result.withIsCustomer(true) : result);
   }
 
   AppBar _buildSelectionAppBar(BuildContext context, LeadListState state) {
-    final notifier = ref.read(leadListControllerProvider.notifier);
-    return AppBar(
+    final notifier = ref.read(_provider.notifier);
+    return brandAppBar(
       leading: IconButton(icon: const Icon(Icons.close), tooltip: 'Cancel', onPressed: notifier.exitSelectionMode),
       title: Text('${state.selectedIds.length} selected'),
       actions: [
@@ -172,30 +247,16 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
       case LeadBulkAction.changeStatus:
         statusId = await showModalBottomSheet<String>(context: context, isScrollControlled: true, builder: (_) => const _BulkStatusPickerSheet());
         if (statusId == null) return;
-      case LeadBulkAction.delete:
-        final selectedCount = ref.read(leadListControllerProvider).selectedIds.length;
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Delete these leads?'),
-            content: Text('This will delete $selectedCount lead(s). This can only be reversed by an administrator.'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-              TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
-            ],
-          ),
-        );
-        if (confirmed != true) return;
     }
 
     if (!context.mounted) return;
     final result = await ref
-        .read(leadListControllerProvider.notifier)
+        .read(_provider.notifier)
         .runBulkAction(action: action, memberId: memberId, statusId: statusId);
     if (!context.mounted) return;
 
     if (result == null) {
-      final message = ref.read(leadListControllerProvider).errorMessage ?? 'Could not complete the bulk action.';
+      final message = ref.read(_provider).errorMessage ?? 'Could not complete the bulk action.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
@@ -221,6 +282,7 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
     );
     if (shouldRefresh == true) {
       ref.invalidate(leadListControllerProvider);
+      ref.invalidate(customerListControllerProvider);
       ref.invalidate(pipelineControllerProvider);
     }
   }
@@ -234,20 +296,20 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
       case LeadListStatus.error:
         return AppRetryView(
           message: state.errorMessage ?? 'Could not load leads.',
-          onRetry: () => ref.read(leadListControllerProvider.notifier).refresh(),
+          onRetry: () => ref.read(_provider.notifier).refresh(),
         );
 
       case LeadListStatus.empty:
         return RefreshIndicator(
-          onRefresh: () => ref.read(leadListControllerProvider.notifier).refresh(),
-          child: ListView(
-            children: [
-              const SizedBox(height: 80),
-              EmptyStateView(
-                icon: Icons.people_outline,
-                message: state.searchQuery.isEmpty ? 'No leads yet. Tap + to add one.' : 'No leads match "${state.searchQuery}".',
+          onRefresh: () => ref.read(_provider.notifier).refresh(),
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: _buildEmpty(state),
               ),
-            ],
+            ),
           ),
         );
 
@@ -255,7 +317,7 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
       case LeadListStatus.refreshing:
       case LeadListStatus.loadingMore:
         return RefreshIndicator(
-          onRefresh: () => ref.read(leadListControllerProvider.notifier).refresh(),
+          onRefresh: () => ref.read(_provider.notifier).refresh(),
           child: ListView.separated(
             controller: _scrollController,
             itemCount: state.items.length + (state.hasMore ? 1 : 0),
@@ -274,12 +336,41 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
     }
   }
 
+  Widget _buildEmpty(LeadListState state) {
+    final noun = _isCustomers ? 'customers' : 'leads';
+    if (state.searchQuery.isNotEmpty) {
+      return AllocationsEmptyView(title: 'No $noun match "${state.searchQuery}".');
+    }
+    final statusId = state.filters.statusId;
+    final statuses = ref.read(leadReferenceDataProvider).valueOrNull?.statuses ?? const <LeadStatus>[];
+    final selected = statusId == null ? null : statuses.where((s) => s.id == statusId).firstOrNull;
+    // The customer flag is part of what the Customers tab is, so it is not a "filter" here.
+    final otherFilters = state.filters.withStatus(null).withIsCustomer(null).isNotEmpty;
+
+    if (selected != null && !otherFilters) return AllocationsEmptyView(title: 'No $noun with status "${selected.name}"');
+    if (otherFilters || selected != null) return AllocationsEmptyView(title: 'No $noun match your filters.');
+
+    if (_isCustomers) {
+      return const AllocationsEmptyView(
+        title: 'No customers yet',
+        hint: 'A lead becomes a customer once it is converted. Convert a lead and it will show up here.',
+      );
+    }
+    return const AllocationsEmptyView(
+      title: 'No allocations found',
+      hint: 'Admins can allocate new customers via bulk upload or data source integration from the admin web. '
+          'You can also add a lead yourself with the + button.',
+    );
+  }
+
   Widget _buildLeadRow(LeadListState state, Lead lead) {
     final selectionMode = state.selectionMode;
-    final notifier = ref.read(leadListControllerProvider.notifier);
+    final notifier = ref.read(_provider.notifier);
     final tile = _LeadTile(
       lead: lead,
-      onTap: selectionMode ? () => notifier.toggleSelection(lead.id) : () => context.push(RoutePaths.leadDetail(lead.id)),
+      onTap: selectionMode
+          ? () => notifier.toggleSelection(lead.id)
+          : () => context.push(_isCustomers ? RoutePaths.customerDetail(lead.id) : RoutePaths.leadDetail(lead.id)),
     );
     if (!selectionMode) return tile;
     return Row(
@@ -304,9 +395,7 @@ class _LeadTile extends StatelessWidget {
       avatarName: lead.name,
       title: lead.name,
       onTap: onTap,
-      trailing: status == null
-          ? null
-          : AppStatusChip.forLeadStatus(name: status.name, stage: status.stage),
+      trailing: LeadRowTrailing(phone: lead.phone, leadId: lead.id, leadName: lead.name, isCustomer: lead.isCustomer, chip: status == null ? null : AppStatusChip.forLeadStatus(name: status.name, stage: status.stage)),
       subtitle: [lead.phone, lead.email].where((v) => v != null && v.isNotEmpty).join(' • ').isEmpty
           ? null
           : [lead.phone, lead.email].where((v) => v != null && v.isNotEmpty).join(' • '),
@@ -548,9 +637,12 @@ class _ImportSheet extends ConsumerWidget {
 /// local to this sheet's own state until "Apply" — cancelling (back
 /// button/backdrop tap) leaves the list's active filters untouched.
 class _FilterSheet extends ConsumerStatefulWidget {
-  const _FilterSheet({required this.initialFilters});
+  const _FilterSheet({required this.initialFilters, this.showCustomerFilter = true});
 
   final LeadFilters initialFilters;
+
+  /// Hidden on the Customers tab, where every row is a customer by definition.
+  final bool showCustomerFilter;
 
   @override
   ConsumerState<_FilterSheet> createState() => _FilterSheetState();
@@ -730,25 +822,27 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text('Customer', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  children: [
-                    ChoiceChip(label: const Text('Any'), selected: _isCustomer == null, onSelected: (_) => setState(() => _isCustomer = null)),
-                    ChoiceChip(
-                      label: const Text('Customers only'),
-                      selected: _isCustomer == true,
-                      onSelected: (_) => setState(() => _isCustomer = true),
-                    ),
-                    ChoiceChip(
-                      label: const Text('Non-customers only'),
-                      selected: _isCustomer == false,
-                      onSelected: (_) => setState(() => _isCustomer = false),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
+                if (widget.showCustomerFilter) ...[
+                  Text('Customer', style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    children: [
+                      ChoiceChip(label: const Text('Any'), selected: _isCustomer == null, onSelected: (_) => setState(() => _isCustomer = null)),
+                      ChoiceChip(
+                        label: const Text('Customers only'),
+                        selected: _isCustomer == true,
+                        onSelected: (_) => setState(() => _isCustomer = true),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Non-customers only'),
+                        selected: _isCustomer == false,
+                        onSelected: (_) => setState(() => _isCustomer = false),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 Text('Created date', style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: AppSpacing.xs),
                 Row(

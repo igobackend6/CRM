@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../sim/presentation/providers/sim_providers.dart';
+import '../../domain/phone_key.dart';
 import '../providers/dialer_providers.dart';
+import '../providers/native_dialer_providers.dart';
 
 /// Diameter of one keypad circle. Fixed rather than GridView-derived
 /// (which stretched each circle to fill the row, reading as oversized
@@ -27,7 +32,10 @@ const _kKeySize = 64.0;
 /// Calling & Call Log Foundation, a manually-logged history, not a
 /// dialer), so that's the honest, real behavior here too.
 class DialerScreen extends ConsumerStatefulWidget {
-  const DialerScreen({super.key});
+  const DialerScreen({super.key, this.initialNumber});
+
+  /// A number to start with (a tel: link from another app). Never dialled until the member taps Call.
+  final String? initialNumber;
 
   @override
   ConsumerState<DialerScreen> createState() => _DialerScreenState();
@@ -57,7 +65,43 @@ const _kKeys = [
 class _DialerScreenState extends ConsumerState<DialerScreen> {
   final _digits = StringBuffer();
 
-  void _append(String value) => setState(() => _digits.write(value));
+  /// The number the CRM lookup is asked about: updated only after a pause in typing.
+  String _lookupNumber = '';
+  Timer? _lookupTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    final start = widget.initialNumber;
+    if (start != null && start.trim().isNotEmpty) {
+      _digits.write(start.replaceAll(RegExp(r'[^0-9+*#]'), ''));
+      _lookupNumber = _digits.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _lookupTimer?.cancel();
+    super.dispose();
+  }
+
+  void _digitsChanged() {
+    _lookupTimer?.cancel();
+    final number = _digits.toString();
+    if (phoneKey(number) == null) {
+      _lookupNumber = '';
+      return;
+    }
+    // No server request on every key press: wait for a short pause once 10 digits are typed.
+    _lookupTimer = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) setState(() => _lookupNumber = number);
+    });
+  }
+
+  void _append(String value) {
+    setState(() => _digits.write(value));
+    _digitsChanged();
+  }
 
   void _backspace() {
     if (_digits.isEmpty) return;
@@ -67,12 +111,26 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
         ..clear()
         ..write(text.substring(0, text.length - 1));
     });
+    _digitsChanged();
+  }
+
+  void _clearAll() {
+    setState(_digits.clear);
+    _digitsChanged();
   }
 
   Future<void> _call() async {
     final number = _digits.toString();
     if (number.isEmpty) return;
-    await ref.read(dialerUrlLauncherProvider).launch(Uri(scheme: 'tel', path: number));
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await ref.read(callPlacerProvider).place(number, fallback: ref.read(dialerUrlLauncherProvider));
+    final message = switch (result) {
+      CallStartResult.permissionDenied => 'Allow the Phone permission to place calls from Sales CRM.',
+      CallStartResult.invalidNumber => 'Enter a valid phone number.',
+      CallStartResult.failed => 'Couldn\'t start the call. Try again.',
+      _ => null,
+    };
+    if (message != null) messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -120,7 +178,9 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
                 icon: const Icon(Icons.person_add_alt_1, size: 18),
                 label: const Text('Create new customer'),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.sm),
+              _LeadMatchCard(number: _lookupNumber),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(
@@ -132,10 +192,15 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
                     ),
                   ),
                   if (number.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Backspace',
-                      onPressed: _backspace,
+                    Tooltip(
+                      message: 'Backspace',
+                      child: InkResponse(
+                        key: const Key('dialer-backspace'),
+                        onTap: _backspace,
+                        onLongPress: _clearAll,
+                        radius: 24,
+                        child: const Padding(padding: EdgeInsets.all(12), child: Icon(Icons.backspace_outlined)),
+                      ),
                     ),
                 ],
               ),
@@ -151,7 +216,9 @@ class _DialerScreenState extends ConsumerState<DialerScreen> {
                   ],
                 ),
               ],
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.md),
+              const _SimChoice(),
+              const SizedBox(height: AppSpacing.md),
               _CallButton(onPressed: _call),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -221,6 +288,74 @@ class _CallButton extends StatelessWidget {
         shape: const CircleBorder(),
         child: const Icon(Icons.call, size: 30),
       ),
+    );
+  }
+}
+
+/// Who the typed number is in the CRM: the lead's name, status and a way to open it, or a prompt to
+/// create one. Hidden until a full number has been typed.
+class _LeadMatchCard extends ConsumerWidget {
+  const _LeadMatchCard({required this.number});
+
+  final String number;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (number.isEmpty) return const SizedBox(height: 44);
+    final theme = Theme.of(context);
+    final match = ref.watch(leadMatchProvider(number));
+    return match.when(
+      loading: () => const SizedBox(height: 44, child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))),
+      error: (_, _) => const SizedBox(height: 44),
+      data: (lead) => lead == null
+          ? SizedBox(
+              height: 44,
+              child: Center(child: Text('Not in your CRM yet', key: const Key('dialer-no-match'), style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textDim))),
+            )
+          : Card(
+              key: const Key('dialer-match'),
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                dense: true,
+                leading: CircleAvatar(child: Text(lead.name.isEmpty ? '?' : lead.name[0].toUpperCase())),
+                title: Text(lead.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text([if (lead.isCustomer) 'Customer' else 'Lead', ?lead.status].join(' · ')),
+                trailing: TextButton(
+                  key: const Key('dialer-match-view'),
+                  onPressed: () => context.push(RoutePaths.leadDetail(lead.leadId)),
+                  child: const Text('View'),
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+/// Which SIM the call uses, shown only when the CRM is the Phone app and the phone has two SIMs.
+class _SimChoice extends ConsumerWidget {
+  const _SimChoice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDefault = ref.watch(defaultDialerControllerProvider.select((s) => s.isDefault));
+    final accounts = ref.watch(dialerPhoneAccountsProvider).valueOrNull ?? const [];
+    if (!isDefault || accounts.length < 2) return const SizedBox.shrink();
+    final business = ref.watch(businessSimSelectionProvider).valueOrNull?.subscriptionId;
+    final chosen = ref.watch(dialerSimChoiceProvider) ?? business;
+    return Wrap(
+      key: const Key('dialer-sim-choice'),
+      spacing: AppSpacing.sm,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final a in accounts)
+          ChoiceChip(
+            key: Key('dialer-sim-${a.subscriptionId ?? a.index}'),
+            avatar: const Icon(Icons.sim_card_outlined, size: 16),
+            label: Text('SIM ${a.index + 1} · ${a.label}'),
+            selected: a.subscriptionId != null ? chosen == a.subscriptionId : false,
+            onSelected: a.subscriptionId == null ? null : (_) => ref.read(dialerSimChoiceProvider.notifier).state = a.subscriptionId,
+          ),
+      ],
     );
   }
 }

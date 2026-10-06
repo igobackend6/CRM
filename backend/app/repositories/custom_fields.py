@@ -1,3 +1,4 @@
+import re
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +12,45 @@ from app.repositories.base import BaseRepository
 _UNIQUE_VIOLATION = "23505"
 
 
+def _option_code(label: str, taken: set[str]) -> str:
+    """A lowercase slug for [label] (the contract's option code shape), unique among [taken]."""
+    slug = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")
+    if not slug or not slug[0].isalpha():
+        slug = f"opt_{slug}".rstrip("_")
+    slug = slug[:90]
+    code, n = slug, 2
+    while code in taken:
+        code = f"{slug}_{n}"
+        n += 1
+    taken.add(code)
+    return code
+
+
+def normalize_options(row: dict[str, Any]) -> dict[str, Any]:
+    """Return [row] with every entry of `options` in the `{code, label, sort_order}` shape.
+
+    The admin panel can save a choice as a plain string (`["Polyhouse", "Drip Irrigation"]`), while
+    the contract (`CustomFieldOption`) is an object per choice with a lowercase-slug `code`. Left as
+    is, one such field made `GET /custom-fields` fail validation (HTTP 500), which broke the mobile
+    lead form for everyone. A plain string becomes `{code: <slug of it>, label: <the string>,
+    sort_order: <position>}` (`"Drip Irrigation"` -> `drip_irrigation`). Objects pass through
+    untouched. Codes are derived the same way on every read, so they are stable.
+    """
+    options = row.get("options")
+    if not isinstance(options, list) or all(isinstance(o, dict) for o in options):
+        return row
+    taken = {o["code"] for o in options if isinstance(o, dict) and isinstance(o.get("code"), str)}
+    fixed: list[Any] = []
+    for position, option in enumerate(options):
+        if isinstance(option, str):
+            text = option.strip()
+            if text:
+                fixed.append({"code": _option_code(text, taken), "label": text, "sort_order": position})
+        else:
+            fixed.append(option)
+    return {**row, "options": fixed}
+
+
 class CustomFieldRepository(BaseRepository):
     """`custom_fields` (000025_custom_fields.sql) — workspace-defined
     extra fields on a lead. Same flat, workspace-scoped CRUD shape as
@@ -20,7 +60,7 @@ class CustomFieldRepository(BaseRepository):
     table_name = "custom_fields"
 
     def list_for_workspace(self, workspace_id: UUID) -> list[dict[str, Any]]:
-        return (
+        rows = (
             self._client.table("custom_fields")
             .select("*")
             .eq("workspace_id", str(workspace_id))
@@ -30,6 +70,7 @@ class CustomFieldRepository(BaseRepository):
             .data
             or []
         )
+        return [normalize_options(row) for row in rows]
 
     def get_for_workspace(self, workspace_id: UUID, field_id: UUID) -> dict[str, Any]:
         response = (
@@ -42,7 +83,7 @@ class CustomFieldRepository(BaseRepository):
         )
         if response is None or response.data is None:
             raise NotFoundError(f"Custom field {field_id} not found.")
-        return response.data
+        return normalize_options(response.data)
 
     def create(self, workspace_id: UUID, data: dict[str, Any]) -> dict[str, Any]:
         row = {**data, "workspace_id": str(workspace_id)}

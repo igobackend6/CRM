@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/external_url_launcher.dart';
 import '../../../../core/utils/location_service.dart';
 import '../../../../services/api/lead_api_data_source.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -7,6 +8,7 @@ import '../../../customer360/domain/entities/timeline_list_state.dart';
 import '../../../workspace/presentation/providers/workspace_providers.dart';
 import '../../data/lead_repository_impl.dart';
 import '../../domain/entities/lead_detail_state.dart';
+import '../../domain/entities/lead_filters.dart';
 import '../../domain/entities/lead_form_state.dart';
 import '../../domain/entities/lead_import_state.dart';
 import '../../domain/entities/lead_list_state.dart';
@@ -33,10 +35,20 @@ final leadRepositoryProvider = Provider<LeadRepository>((ref) {
 /// The create form's "Others" section (Runo-reference layout) — a
 /// provider seam over `geolocator` for the same testability reason as
 /// documentFilePickerProvider/documentExternalUrlLauncherProvider.
+/// Opens the phone dialer (`tel:`) and WhatsApp (`wa.me`) from Lead Detail's contact buttons — a
+/// seam so tests can record what would have been opened.
+final leadContactLauncherProvider = Provider<ExternalUrlLauncher>((ref) => DefaultExternalUrlLauncher());
+
 final leadLocationServiceProvider = Provider<LocationService>((ref) => GeolocatorLocationService());
 
 final leadListControllerProvider = StateNotifierProvider.autoDispose<LeadListController, LeadListState>((ref) {
   return LeadListController(ref.watch(leadRepositoryProvider), ref);
+});
+
+/// The Customers tab's list: the same paged lead list with `isCustomer: true` pinned, so it shares the
+/// lead list's search, filters, pagination, bulk actions and realtime refresh.
+final customerListControllerProvider = StateNotifierProvider.autoDispose<LeadListController, LeadListState>((ref) {
+  return LeadListController(ref.watch(leadRepositoryProvider), ref, initialFilters: const LeadFilters(isCustomer: true));
 });
 
 final leadDetailControllerProvider =

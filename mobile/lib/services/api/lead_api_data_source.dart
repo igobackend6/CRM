@@ -38,8 +38,6 @@ abstract class LeadApiDataSource {
     required Map<String, dynamic> body,
   });
 
-  Future<void> deleteLead({required String accessToken, required String workspaceId, required String leadId});
-
   /// Phase 18 — dedicated Lead -> Customer conversion. No request body:
   /// the server derives everything it needs from the existing lead row
   /// and the authenticated caller.
@@ -195,15 +193,6 @@ class DioLeadApiDataSource implements LeadApiDataSource {
         options: ApiClient.authOptions(accessToken),
       );
       return response.data ?? const {};
-    } on DioException catch (e) {
-      throw mapDioExceptionToAppException(e);
-    }
-  }
-
-  @override
-  Future<void> deleteLead({required String accessToken, required String workspaceId, required String leadId}) async {
-    try {
-      await _dio.delete('${_base(workspaceId)}/leads/$leadId', options: ApiClient.authOptions(accessToken));
     } on DioException catch (e) {
       throw mapDioExceptionToAppException(e);
     }

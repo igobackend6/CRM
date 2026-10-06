@@ -7,7 +7,7 @@ from supabase import Client
 
 from app.api.dependencies import require_permission, require_workspace_member
 from app.core.date_ranges import REPORT_DATE_RANGES
-from app.schemas.reports import PersonalReportOut, PipelineReportOut, TeamReportOut
+from app.schemas.reports import CallTrendsOut, PersonalReportOut, PipelineReportOut, TeamReportOut
 from app.security.permissions import Permission
 from app.services.reports import ReportService
 
@@ -44,6 +44,26 @@ async def get_personal_report(
     never uses "custom" never needs to send them."""
     return PersonalReportOut(
         **_service(client).get_personal_report(workspace_id, range_key=range, custom_since=since, custom_until=until)
+    )
+
+
+@router.get("/workspaces/{workspace_id}/reports/call-trends", response_model=CallTrendsOut)
+async def get_call_trends(
+    workspace_id: UUID,
+    client: Annotated[Client, Depends(require_workspace_member)],
+    since: datetime = Query(...),
+    until: datetime = Query(...),
+    granularity: str = Query(default="day", pattern="^(hour|day)$"),
+    direction: str = Query(default="all", pattern="^(all|inbound|outbound)$"),
+) -> CallTrendsOut:
+    """Call Analytics chart data — the caller's own calls, bucketed. Plain
+    membership gate (like `/reports/personal`): every role, team_mate
+    included, sees their own trends; other members' calls are the Team
+    report's job and stay behind `reports.read`."""
+    return CallTrendsOut(
+        **_service(client).get_call_trends(
+            workspace_id, since=since, until=until, granularity=granularity, direction=direction
+        )
     )
 
 

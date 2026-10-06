@@ -50,13 +50,4 @@ class DocumentRepositoryImpl implements DocumentRepository {
     return json['url'] as String;
   }
 
-  @override
-  Future<void> deleteDocument({
-    required String accessToken,
-    required String workspaceId,
-    required String leadId,
-    required String documentId,
-  }) {
-    return _dataSource.deleteDocument(accessToken: accessToken, workspaceId: workspaceId, leadId: leadId, documentId: documentId);
-  }
 }

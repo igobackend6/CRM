@@ -22,7 +22,6 @@ abstract class MessageTemplateApiDataSource {
     Map<String, dynamic>? changes,
   });
 
-  Future<void> deleteTemplate({required String accessToken, required String workspaceId, required String templateId});
 }
 
 class DioMessageTemplateApiDataSource implements MessageTemplateApiDataSource {
@@ -80,12 +79,4 @@ class DioMessageTemplateApiDataSource implements MessageTemplateApiDataSource {
     }
   }
 
-  @override
-  Future<void> deleteTemplate({required String accessToken, required String workspaceId, required String templateId}) async {
-    try {
-      await _dio.delete<void>('${_base(workspaceId)}/$templateId', options: ApiClient.authOptions(accessToken));
-    } on DioException catch (e) {
-      throw mapDioExceptionToAppException(e);
-    }
-  }
 }

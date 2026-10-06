@@ -1,0 +1,9 @@
+# {$DOMAIN} comes from deploy/.env (e.g. api.yourcompany.com, or 203-0-113-10.sslip.io).
+{$DOMAIN} {
+	encode gzip
+	# Call recordings are uploaded through the API: allow files up to 60 MB.
+	request_body {
+		max_size 60MB
+	}
+	reverse_proxy api:8000
+}

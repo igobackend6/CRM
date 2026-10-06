@@ -56,13 +56,5 @@ void main() {
       expect(dataSource.lastUpdateChanges, {'name': 'Renamed'});
     });
 
-    test('deleteTemplate forwards the template id', () async {
-      final dataSource = FakeMessageTemplateApiDataSource();
-      final repo = MessageTemplateRepositoryImpl(dataSource);
-
-      await repo.deleteTemplate(accessToken: 't', workspaceId: 'w1', templateId: 't1');
-
-      expect(dataSource.lastDeletedTemplateId, 't1');
-    });
   });
 }

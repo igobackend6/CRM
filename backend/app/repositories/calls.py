@@ -1,9 +1,11 @@
+from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
 from postgrest.exceptions import APIError
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.timeparse import parse_supabase_datetime
 from app.repositories.base import BaseRepository
 
 
@@ -169,6 +171,84 @@ class CallRepository(BaseRepository):
             query = query.lt("started_at", until)
         rows = query.execute().data or []
         return {row["lead_id"] for row in rows if row.get("lead_id")}
+
+    def list_for_trends(
+        self,
+        workspace_id: UUID,
+        *,
+        agent_member_id: UUID | str,
+        since: str,
+        until: str,
+        direction: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Just the columns the call-trends chart needs (no notes/ids) for
+        one member's calls in a window, oldest first. PostgREST caps a
+        single response at 1000 rows, so this pages with `.range()` until
+        a short page comes back — a busy agent's month can exceed one
+        page, and silently truncating would under-count the chart. The
+        page-count ceiling is a runaway guard only (50k calls for one
+        agent in one picker window is not a real workload)."""
+        page_size = 1000
+        max_pages = 50
+        rows: list[dict[str, Any]] = []
+        for page in range(max_pages):
+            query = (
+                self._client.table("calls")
+                .select("started_at,state,lead_id,duration_seconds")
+                .eq("workspace_id", str(workspace_id))
+                .eq("agent_member_id", str(agent_member_id))
+                .gte("started_at", since)
+                .lt("started_at", until)
+            )
+            if direction is not None:
+                query = query.eq("direction", direction)
+            # Deterministic order so pages never overlap or skip rows.
+            query = query.order("started_at").order("id").range(page * page_size, (page + 1) * page_size - 1)
+            batch = query.execute().data or []
+            rows.extend(batch)
+            if len(batch) < page_size:
+                break
+        return rows
+
+    def list_for_activity(
+        self,
+        workspace_id: UUID,
+        *,
+        agent_member_id: UUID | str,
+        since: str,
+        until: str,
+    ) -> list[dict[str, Any]]:
+        """The three timestamps Login Analytics needs (talk, on-call and
+        wrap-up time) for one member's calls that could touch [since,
+        until). A call is short, so "started within a day before `since`,
+        and before `until`" catches every call overlapping the window;
+        the caller clips to the exact window. Paged like `list_for_trends`
+        — a busy day can exceed PostgREST's 1000-row response cap."""
+        page_size = 1000
+        max_pages = 50
+        # Widen the lower bound by a day so a call that began just before
+        # `since` and ended inside the window is still seen.
+        lower = (parse_supabase_datetime(since) - timedelta(days=1)).isoformat()
+        rows: list[dict[str, Any]] = []
+        for page in range(max_pages):
+            batch = (
+                self._client.table("calls")
+                .select("started_at,connected_at,ended_at")
+                .eq("workspace_id", str(workspace_id))
+                .eq("agent_member_id", str(agent_member_id))
+                .gte("started_at", lower)
+                .lt("started_at", until)
+                .order("started_at")
+                .order("id")
+                .range(page * page_size, (page + 1) * page_size - 1)
+                .execute()
+                .data
+                or []
+            )
+            rows.extend(batch)
+            if len(batch) < page_size:
+                break
+        return rows
 
     def duration_stats(
         self,

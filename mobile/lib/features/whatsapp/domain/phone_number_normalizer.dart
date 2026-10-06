@@ -23,10 +23,21 @@ class PhoneNormalizationResult {
 /// and 8-15 digits long after normalization (E.164's own bounds).
 /// Anything else (missing, too short/long, no country-code marker) is
 /// reported invalid rather than guessed at.
-PhoneNormalizationResult normalizePhoneForWhatsApp(String? rawPhone) {
+///
+/// [defaultCountryCode] (digits only, e.g. `91`) is the one deliberate exception, for a caller that
+/// knows its users' home country: a bare 10-digit local number (optionally with a leading `0`) is
+/// read as belonging to that country. Left null, nothing is ever guessed (every existing caller).
+PhoneNormalizationResult normalizePhoneForWhatsApp(String? rawPhone, {String? defaultCountryCode}) {
   if (rawPhone == null) return const PhoneNormalizationResult.invalid();
   var value = rawPhone.trim();
   if (value.isEmpty) return const PhoneNormalizationResult.invalid();
+
+  final localDigits = value.replaceAll(RegExp(r'[^0-9]'), '');
+  final isBareLocal = !value.startsWith('+') && !value.startsWith('00');
+  if (defaultCountryCode != null && isBareLocal) {
+    final national = localDigits.length == 11 && localDigits.startsWith('0') ? localDigits.substring(1) : localDigits;
+    if (national.length == 10) return PhoneNormalizationResult.valid('$defaultCountryCode$national');
+  }
 
   if (value.startsWith('00')) {
     value = '+${value.substring(2)}';

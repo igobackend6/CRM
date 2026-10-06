@@ -66,22 +66,6 @@ class _DocumentsSectionState extends ConsumerState<DocumentsSection> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open this document.')));
   }
 
-  Future<void> _confirmDelete(Document document) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this document?'),
-        content: Text('"${document.fileName}" will be removed. This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await ref.read(documentListControllerProvider(widget.leadId).notifier).deleteDocument(document.id);
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(documentListControllerProvider(widget.leadId));
@@ -123,9 +107,7 @@ class _DocumentsSectionState extends ConsumerState<DocumentsSection> {
           children: [
             ...state.items.map((d) => _DocumentTile(
                   document: d,
-                  isDeleting: state.deletingId == d.id,
                   onOpen: () => _open(d),
-                  onDelete: () => _confirmDelete(d),
                 )),
             if (state.hasMore)
               Padding(
@@ -144,12 +126,10 @@ class _DocumentsSectionState extends ConsumerState<DocumentsSection> {
 }
 
 class _DocumentTile extends StatelessWidget {
-  const _DocumentTile({required this.document, required this.isDeleting, required this.onOpen, required this.onDelete});
+  const _DocumentTile({required this.document, required this.onOpen});
 
   final Document document;
-  final bool isDeleting;
   final VoidCallback onOpen;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -166,9 +146,6 @@ class _DocumentTile extends StatelessWidget {
           _formatDateTime(document.createdAt),
         ].join(' • '),
       ),
-      trailing: isDeleting
-          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-          : IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: onDelete),
     );
   }
 }

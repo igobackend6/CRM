@@ -175,18 +175,6 @@ class LeadDetailController extends StateNotifier<LeadDetailState> with RealtimeR
     }
   }
 
-  Future<bool> deleteLead() async {
-    final context = resolveLeadContext(_ref.read);
-    if (context == null) return false;
-    try {
-      await _repository.deleteLead(accessToken: context.accessToken, workspaceId: context.workspaceId, leadId: leadId);
-      return true;
-    } on AppException catch (e) {
-      state = state.copyWithError(e.message);
-      return false;
-    }
-  }
-
   @override
   void dispose() {
     disposeRealtime();

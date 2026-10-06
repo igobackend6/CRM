@@ -57,7 +57,7 @@ class _RechurnQueueScreenState extends ConsumerState<RechurnQueueScreen> {
     final activeCount = ref.watch(rechurnListControllerProvider.select((s) => s.filters.activeCount));
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Rechurn'),
         actions: [
           IconButton(

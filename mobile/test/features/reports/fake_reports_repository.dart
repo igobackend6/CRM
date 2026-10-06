@@ -2,6 +2,7 @@ import 'package:mobile/features/leads/domain/entities/lead_source.dart';
 import 'package:mobile/features/leads/domain/entities/lead_status.dart';
 import 'package:mobile/features/leads/domain/entities/member_summary.dart';
 import 'package:mobile/features/reports/domain/entities/call_metrics.dart';
+import 'package:mobile/features/reports/domain/entities/call_trends.dart';
 import 'package:mobile/features/reports/domain/entities/follow_up_metrics.dart';
 import 'package:mobile/features/reports/domain/entities/lead_metrics.dart';
 import 'package:mobile/features/reports/domain/entities/personal_report.dart';
@@ -22,6 +23,7 @@ PersonalReport testPersonalReport({
   int leadsAssigned = 5,
   int leadsConverted = 2,
   double conversionRate = 0.4,
+  PipelineSnapshot? pipeline,
 }) =>
     PersonalReport(
       range: 'all_time',
@@ -36,12 +38,13 @@ PersonalReport testPersonalReport({
       ),
       followUps: const FollowUpMetrics(totalFollowUps: 3, pendingFollowUps: 1, completedFollowUps: 2, cancelledFollowUps: 0, overdueFollowUps: 0),
       leads: LeadMetrics(leadsCreated: 4, leadsAssigned: leadsAssigned, leadsContacted: 3, leadsConverted: leadsConverted, conversionRate: conversionRate),
-      pipeline: PipelineSnapshot(
-        leadsByStatus: [ReportStatusItem(status: testStatus(), count: 2)],
-        customerCount: 2,
-        lostLeads: 1,
-        activePipelineCount: 2,
-      ),
+      pipeline: pipeline ??
+          PipelineSnapshot(
+            leadsByStatus: [ReportStatusItem(status: testStatus(), count: 2)],
+            customerCount: 2,
+            lostLeads: 1,
+            activePipelineCount: 2,
+          ),
     );
 
 TeamMemberReportRow testTeamRow({String memberId = 'm1', String fullName = 'Jamie Rep', int leadsConverted = 1}) => TeamMemberReportRow(
@@ -100,6 +103,14 @@ class FakeReportsRepository implements ReportsRepository {
   PipelineReport pipelineReportToReturn = testPipelineReport();
   Object? pipelineError;
 
+  CallTrends callTrendsToReturn = CallTrends.empty;
+  Object? callTrendsError;
+  DateTime? lastTrendsSince;
+  DateTime? lastTrendsUntil;
+  CallTrendGranularity? lastTrendsGranularity;
+  CallTrendDirection? lastTrendsDirection;
+  int trendsCallCount = 0;
+
   String? lastRange;
   int? lastTeamOffset;
   int callCount = 0;
@@ -155,4 +166,49 @@ class FakeReportsRepository implements ReportsRepository {
     if (pipelineError != null) throw pipelineError!;
     return pipelineReportToReturn;
   }
+
+  @override
+  Future<CallTrends> getCallTrends({
+    required String accessToken,
+    required String workspaceId,
+    required DateTime since,
+    required DateTime until,
+    required CallTrendGranularity granularity,
+    required CallTrendDirection direction,
+  }) async {
+    trendsCallCount++;
+    lastTrendsSince = since;
+    lastTrendsUntil = until;
+    lastTrendsGranularity = granularity;
+    lastTrendsDirection = direction;
+    if (callTrendsError != null) throw callTrendsError!;
+    return callTrendsToReturn;
+  }
+}
+
+/// A `CallTrends` with `bucketCount` hourly buckets, where `callsByIndex`
+/// maps a bucket index to its call count (everything else is zero).
+CallTrends testCallTrends({
+  int bucketCount = 24,
+  Map<int, int> callsByIndex = const {},
+  int uniqueLeads = 0,
+  int talkTimeSeconds = 0,
+  CallTrendGranularity granularity = CallTrendGranularity.hour,
+}) {
+  final start = DateTime.utc(2026, 9, 24);
+  return CallTrends(
+    granularity: granularity,
+    buckets: [
+      for (var i = 0; i < bucketCount; i++)
+        CallTrendBucket(
+          start: granularity == CallTrendGranularity.hour ? start.add(Duration(hours: i)) : start.add(Duration(days: i)),
+          calls: callsByIndex[i] ?? 0,
+          uniqueLeads: (callsByIndex[i] ?? 0) > 0 ? 1 : 0,
+          talkTimeSeconds: 0,
+        ),
+    ],
+    totalCalls: callsByIndex.values.fold(0, (a, b) => a + b),
+    uniqueLeads: uniqueLeads,
+    totalTalkTimeSeconds: talkTimeSeconds,
+  );
 }

@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Used instead of src/debug/AndroidManifest.xml ONLY when building with CRM_NO_RECORDER=1
+         (see app/build.gradle.kts). Same as the debug manifest (INTERNET), and it strips the call
+         recorder's accessibility service and microphone parts out of the merged manifest.
+
+         Why: Google Play Protect refuses to install a sideloaded APK that declares an accessibility
+         service ("App blocked to protect your device"), so test builds meant for other people's
+         phones are built without it. Call history sync still works; "Record calls" does not. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" tools:node="remove" />
+    <application android:usesCleartextTraffic="true">
+        <service android:name=".CallRecorderService" tools:node="remove" />
+        <service android:name=".CallRecordingKeepAlive" tools:node="remove" />
+    </application>
+</manifest>

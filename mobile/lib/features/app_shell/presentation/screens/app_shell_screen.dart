@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../analytics/presentation/widgets/analytics_floating_tab.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
+import '../../../../core/widgets/brand_app_bar.dart';
 
 /// Authenticated home shell — app bar (title, notification bell,
 /// sign-out) unchanged since Phase 10; the body is the Phase 11
@@ -29,7 +31,7 @@ class AppShellScreen extends ConsumerWidget {
     final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: Text(AppConstants.appName),
         actions: [
           // Phase 21C — same "lightweight entry point into the existing
@@ -66,7 +68,21 @@ class AppShellScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: const DashboardScreen(),
+      // The Analytics hub's entry: a tab on the right edge floating over
+      // the dashboard. Vertical position is a fraction of the body so it
+      // clears the "Overview" heading on any screen height.
+      body: Stack(
+        children: [
+          const DashboardScreen(),
+          Align(
+            alignment: const Alignment(1, -0.45),
+            child: AnalyticsFloatingTab(
+              key: const Key('analytics-floating-tab'),
+              onTap: () => context.push(RoutePaths.analytics),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

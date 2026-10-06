@@ -255,3 +255,152 @@ def test_pipeline_report_rejects_an_unknown_range():
 
     with pytest.raises(ValidationError):
         service.get_pipeline_report(WORKSPACE_ID, range_key="not_a_range")
+
+
+# ---- Analytics hub: get_call_trends ----
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+
+def _trend_service(rows, *, captured=None):
+    service = ReportService(_client())
+
+    def fake_list_for_trends(workspace_id, **kwargs):
+        if captured is not None:
+            captured.update(kwargs)
+        return rows
+
+    service._calls.list_for_trends = fake_list_for_trends
+    return service
+
+
+def _call(started_at, *, lead="lead-a", duration=60):
+    return {"started_at": started_at, "state": "ENDED", "lead_id": lead, "duration_seconds": duration}
+
+
+# A user in IST (UTC+5:30) asking for "today": local midnight 2026-09-24 is
+# 2026-09-23T18:30Z, and the window is one local day.
+_IST_MIDNIGHT = datetime(2026, 9, 23, 18, 30, tzinfo=timezone.utc)
+
+
+def _day_trends(service, **overrides):
+    kwargs = {
+        "since": _IST_MIDNIGHT,
+        "until": _IST_MIDNIGHT + timedelta(days=1),
+        "granularity": "hour",
+        "direction": "all",
+    }
+    kwargs.update(overrides)
+    return service.get_call_trends(WORKSPACE_ID, **kwargs)
+
+
+def test_call_trends_zero_fills_one_bucket_per_hour_of_the_window():
+    result = _day_trends(_trend_service([]))
+
+    assert len(result["buckets"]) == 24
+    assert all(b["calls"] == 0 and b["talk_time_seconds"] == 0 for b in result["buckets"])
+    assert result["buckets"][0]["start"] == _IST_MIDNIGHT
+    assert result["buckets"][23]["start"] == _IST_MIDNIGHT + timedelta(hours=23)
+    assert result["total_calls"] == 0
+
+
+def test_call_trends_buckets_are_counted_from_since_so_they_follow_the_users_local_hours():
+    """03:15 UTC is 08:45 IST — local hour 8 — even though it's UTC hour 3."""
+    result = _day_trends(_trend_service([_call("2026-09-24T03:15:00+00:00")]))
+
+    assert result["buckets"][8]["calls"] == 1
+    assert sum(b["calls"] for b in result["buckets"]) == 1
+
+
+def test_call_trends_day_granularity_over_a_week_gives_seven_buckets():
+    week_start = datetime(2026, 9, 20, 18, 30, tzinfo=timezone.utc)  # Mon 21 Sep, IST midnight
+    service = _trend_service([_call("2026-09-22T10:00:00+00:00")])  # Tue 21 Sep 15:30 IST
+
+    result = service.get_call_trends(
+        WORKSPACE_ID, since=week_start, until=week_start + timedelta(days=7), granularity="day", direction="all"
+    )
+
+    assert len(result["buckets"]) == 7
+    assert result["buckets"][1]["calls"] == 1
+
+
+def test_call_trends_sums_talk_time_and_treats_missing_duration_as_zero():
+    rows = [
+        # All inside bucket 8 (02:30Z-03:30Z, i.e. 08:00-09:00 IST).
+        _call("2026-09-24T02:40:00+00:00", duration=90),
+        _call("2026-09-24T03:00:00+00:00", duration=30),
+        _call("2026-09-24T03:20:00+00:00", duration=None),  # never connected
+    ]
+
+    result = _day_trends(_trend_service(rows))
+
+    assert result["buckets"][8]["talk_time_seconds"] == 120
+    assert result["total_talk_time_seconds"] == 120
+    assert result["total_calls"] == 3
+
+
+def test_call_trends_unique_leads_are_distinct_per_bucket_and_across_the_window():
+    rows = [
+        _call("2026-09-24T03:10:00+00:00", lead="a"),
+        _call("2026-09-24T03:20:00+00:00", lead="a"),  # same lead, same bucket
+        _call("2026-09-24T05:10:00+00:00", lead="a"),  # same lead, a later bucket
+        _call("2026-09-24T05:20:00+00:00", lead="b"),
+    ]
+
+    result = _day_trends(_trend_service(rows))
+
+    assert result["buckets"][8]["calls"] == 2
+    assert result["buckets"][8]["unique_leads"] == 1
+    assert result["buckets"][10]["unique_leads"] == 2
+    # Window-wide distinct is NOT the sum of per-bucket distincts (1 + 2).
+    assert result["unique_leads"] == 2
+    assert result["total_calls"] == 4
+
+
+def test_call_trends_ignores_rows_outside_the_window():
+    rows = [_call("2026-09-23T18:00:00+00:00"), _call("2026-09-24T18:30:00+00:00")]
+
+    assert _day_trends(_trend_service(rows))["total_calls"] == 0
+
+
+def test_call_trends_passes_direction_through_only_when_not_all():
+    captured = {}
+    _day_trends(_trend_service([], captured=captured), direction="all")
+    assert captured["direction"] is None
+
+    _day_trends(_trend_service([], captured=captured), direction="outbound")
+    assert captured["direction"] == "outbound"
+
+
+def test_call_trends_queries_only_the_current_members_calls():
+    captured = {}
+    _day_trends(_trend_service([], captured=captured))
+
+    assert captured["agent_member_id"] == MEMBER_ID
+
+
+def test_call_trends_treats_a_naive_since_until_as_utc():
+    since = datetime(2026, 9, 24, 0, 0)  # no tzinfo
+    service = _trend_service([_call("2026-09-24T03:15:00+00:00")])
+
+    result = service.get_call_trends(
+        WORKSPACE_ID, since=since, until=since + timedelta(days=1), granularity="hour", direction="all"
+    )
+
+    assert result["buckets"][3]["calls"] == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"granularity": "week"},
+        {"direction": "sideways"},
+        {"until": _IST_MIDNIGHT},  # since == until
+        {"until": _IST_MIDNIGHT - timedelta(hours=1)},  # since after until
+        # 40 days of hourly buckets is 960 > the bucket ceiling.
+        {"until": _IST_MIDNIGHT + timedelta(days=40)},
+    ],
+)
+def test_call_trends_rejects_invalid_requests(overrides):
+    with pytest.raises(ValidationError):
+        _day_trends(_trend_service([]), **overrides)

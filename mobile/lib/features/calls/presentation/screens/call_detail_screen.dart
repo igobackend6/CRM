@@ -25,7 +25,7 @@ class CallDetailScreen extends ConsumerWidget {
     final state = ref.watch(callDetailControllerProvider(callId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Call')),
+      appBar: brandAppBar(title: const Text('Call')),
       body: _buildBody(context, ref, state),
     );
   }

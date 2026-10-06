@@ -13,6 +13,7 @@ import 'package:mobile/features/leads/domain/entities/lead_import_state.dart';
 import 'package:mobile/features/leads/domain/entities/lead_source.dart';
 import 'package:mobile/features/leads/domain/entities/lead_status.dart';
 import 'package:mobile/features/leads/domain/entities/tag.dart';
+import 'package:mobile/features/leads/domain/lead_list_mode.dart';
 import 'package:mobile/features/leads/presentation/controllers/csv_file_picker.dart';
 import 'package:mobile/features/leads/presentation/providers/leads_providers.dart';
 import 'package:mobile/features/leads/presentation/screens/lead_list_screen.dart';
@@ -31,6 +32,9 @@ Future<void> _pumpLeadListScreen(
   required FakeLeadRepository leadRepository,
   FakeCsvFilePicker? csvFilePicker,
   FakeLeadFilterStorage? leadFilterStorage,
+  // Most tests here exercise the header controls (status selector, filters, select/import menu), which
+  // live on the Customers tab, so that is the default.
+  LeadListMode mode = LeadListMode.customers,
 }) async {
   // Phase 14's filter sheet is genuinely tall (eight filter sections plus
   // saved views) — taller than the default flutter_test surface
@@ -50,8 +54,10 @@ Future<void> _pumpLeadListScreen(
   final router = GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const LeadListScreen()),
+      GoRoute(path: '/', builder: (context, state) => LeadListScreen(mode: mode)),
       GoRoute(path: '/app/leads/create', builder: (context, state) => const Scaffold(body: Text('Create Lead Stub'))),
+      GoRoute(path: '/app/leads/:id', builder: (context, state) => Scaffold(body: Text('LEAD DETAIL ${state.pathParameters['id']}'))),
+      GoRoute(path: '/app/customers/:id', builder: (context, state) => Scaffold(body: Text('CUSTOMER 360 ${state.pathParameters['id']}'))),
     ],
   );
 
@@ -77,6 +83,15 @@ Future<void> _pumpLeadListScreen(
   await tester.pumpAndSettle();
 }
 
+/// The header's overflow menu holds Select and Import (the reference's
+/// header has only four icons).
+Future<void> _chooseFromMenu(WidgetTester tester, String item) async {
+  await tester.tap(find.byTooltip('More'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(item));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('renders leads with their name, status and assigned member', (tester) async {
     final leadRepo = FakeLeadRepository()
@@ -88,14 +103,14 @@ void main() {
     expect(find.text('Acme Corp'), findsOneWidget);
   });
 
-  testWidgets('shows the empty state when there are no leads', (tester) async {
+  testWidgets('shows the empty state when there are no customers', (tester) async {
     final leadRepo = FakeLeadRepository()
       ..leadsToReturn = []
       ..totalToReturn = 0;
 
     await _pumpLeadListScreen(tester, leadRepository: leadRepo);
 
-    expect(find.textContaining('No leads yet'), findsOneWidget);
+    expect(find.text('No customers yet'), findsOneWidget);
   });
 
   testWidgets('tapping the add button navigates to the create route', (tester) async {
@@ -120,7 +135,7 @@ void main() {
 
     await _pumpLeadListScreen(tester, leadRepository: leadRepo);
 
-    await tester.tap(find.byTooltip('Select leads'));
+    await _chooseFromMenu(tester, 'Select leads');
     await tester.pumpAndSettle();
 
     expect(find.text('0 selected'), findsOneWidget);
@@ -132,55 +147,6 @@ void main() {
     expect(find.text('2 selected'), findsOneWidget);
   });
 
-  testWidgets('bulk delete requires confirmation; cancelling does not call the repository', (tester) async {
-    final leadRepo = FakeLeadRepository()
-      ..leadsToReturn = [testLead(id: 'l1', name: 'Acme Corp')]
-      ..totalToReturn = 1;
-
-    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
-
-    await tester.tap(find.byTooltip('Select leads'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Select all visible'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Bulk actions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Delete these leads?'), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-
-    expect(leadRepo.lastBulkAction, isNull);
-    expect(find.text('1 selected'), findsOneWidget);
-  });
-
-  testWidgets('confirming bulk delete calls the repository, exits selection mode, and shows a summary', (tester) async {
-    final leadRepo = FakeLeadRepository()
-      ..leadsToReturn = [testLead(id: 'l1', name: 'Acme Corp')]
-      ..totalToReturn = 1
-      ..bulkActionResultToReturn = const BulkActionResult(total: 1, succeeded: 1, failed: 0, items: []);
-
-    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
-
-    await tester.tap(find.byTooltip('Select leads'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Select all visible'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Bulk actions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
-
-    expect(leadRepo.lastBulkAction, LeadBulkAction.delete);
-    expect(leadRepo.lastBulkLeadIds, ['l1']);
-    expect(find.text('Leads'), findsOneWidget);
-    expect(find.textContaining('1 of 1 leads updated'), findsOneWidget);
-  });
-
   testWidgets('bulk assign opens a member picker and applies the action', (tester) async {
     final leadRepo = FakeLeadRepository()
       ..leadsToReturn = [testLead(id: 'l1', name: 'Acme Corp')]
@@ -190,7 +156,7 @@ void main() {
 
     await _pumpLeadListScreen(tester, leadRepository: leadRepo);
 
-    await tester.tap(find.byTooltip('Select leads'));
+    await _chooseFromMenu(tester, 'Select leads');
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Select all visible'));
     await tester.pumpAndSettle();
@@ -218,7 +184,7 @@ void main() {
 
     await _pumpLeadListScreen(tester, leadRepository: leadRepo);
 
-    await tester.tap(find.byTooltip('Select leads'));
+    await _chooseFromMenu(tester, 'Select leads');
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Select all visible'));
     await tester.pumpAndSettle();
@@ -246,7 +212,7 @@ void main() {
 
     await _pumpLeadListScreen(tester, leadRepository: leadRepo, csvFilePicker: picker);
 
-    await tester.tap(find.byTooltip('Import leads from CSV'));
+    await _chooseFromMenu(tester, 'Import leads from CSV');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Choose CSV file'));
@@ -275,7 +241,7 @@ void main() {
 
     await _pumpLeadListScreen(tester, leadRepository: leadRepo, csvFilePicker: picker);
 
-    await tester.tap(find.byTooltip('Import leads from CSV'));
+    await _chooseFromMenu(tester, 'Import leads from CSV');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose CSV file'));
     await tester.pumpAndSettle();
@@ -324,7 +290,6 @@ void main() {
     await tester.tap(find.text('Referral'));
     await tester.tap(find.text('Rep Two'));
     await tester.tap(find.text('VIP'));
-    await tester.tap(find.text('Customers only'));
     await tester.tap(find.text('Apply filters'));
     await tester.pumpAndSettle();
 
@@ -430,5 +395,307 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hot leads'), findsNothing);
+  });
+
+  // ---- Customers tab: the full header (status selector, search, filters, pipeline, more) ----
+
+  const newStatus = LeadStatus(id: 's-new', name: 'New', code: 'new', sortOrder: 10, stage: 'start', isDefault: true);
+  const contactedStatus = LeadStatus(id: 's-contacted', name: 'Contacted', code: 'contacted', sortOrder: 20, stage: 'in_progress', isDefault: false);
+
+  String selectorLabel(WidgetTester tester) => tester.widget<Text>(find.byKey(const Key('allocations-status-label'))).data!;
+
+  testWidgets('customers: only customers are requested, and the selector starts on All (no default status filter)', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..statusesToReturn = [newStatus, contactedStatus]
+      ..leadsToReturn = [testLead(id: 'l1', name: 'Acme Corp', isCustomer: true)]
+      ..totalToReturn = 1;
+
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    expect(selectorLabel(tester), 'All');
+    expect(leadRepo.lastStatusId, isNull);
+    expect(leadRepo.lastIsCustomer, isTrue);
+    expect(find.text('Acme Corp'), findsOneWidget);
+  });
+
+  testWidgets('customers: the selector lists All and every status; choosing one filters, All clears it', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..statusesToReturn = [newStatus, contactedStatus]
+      ..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    await tester.tap(find.byKey(const Key('allocations-status-selector')));
+    await tester.pumpAndSettle();
+    expect(find.text('All'), findsNWidgets(2)); // the header label and the menu entry
+    expect(find.text('Contacted'), findsOneWidget);
+
+    await tester.tap(find.text('Contacted'));
+    await tester.pumpAndSettle();
+    expect(leadRepo.lastStatusId, 's-contacted');
+    expect(leadRepo.lastIsCustomer, isTrue);
+    expect(selectorLabel(tester), 'Contacted');
+
+    await tester.tap(find.byKey(const Key('allocations-status-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All').last);
+    await tester.pumpAndSettle();
+    expect(leadRepo.lastStatusId, isNull);
+    expect(leadRepo.lastIsCustomer, isTrue);
+  });
+
+  testWidgets('customers: the badge reads shown/total, counting customers only', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]
+      ..totalToReturn = 1
+      ..visibleTotalToReturn = 5;
+
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    expect(find.descendant(of: find.byKey(const Key('allocations-count-badge')), matching: find.text('1/5')), findsOneWidget);
+    expect(leadRepo.lastCountIsCustomer, isTrue);
+  });
+
+  testWidgets('customers: with none yet it explains how a lead becomes a customer, and adding a lead is still possible', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = []
+      ..totalToReturn = 0;
+
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    expect(find.text('No customers yet'), findsOneWidget);
+    expect(find.textContaining('once it is converted'), findsOneWidget);
+    expect(find.byTooltip('New lead'), findsOneWidget);
+  });
+
+  testWidgets('customers: an empty status says so', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..statusesToReturn = [newStatus, contactedStatus]
+      ..leadsToReturn = []
+      ..totalToReturn = 0;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    await tester.tap(find.byKey(const Key('allocations-status-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Contacted'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No customers with status "Contacted"'), findsOneWidget);
+  });
+
+  testWidgets('customers: the status and the customer flag do not count toward the filter badge; a real filter does', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..statusesToReturn = [newStatus, contactedStatus]
+      ..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+    expect(find.descendant(of: find.byTooltip('Filter leads'), matching: find.text('1')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('allocations-status-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Contacted'));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: find.byTooltip('Filter leads'), matching: find.text('1')), findsNothing);
+
+    await tester.tap(find.byTooltip('Filter leads'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('urgent'));
+    await tester.tap(find.text('Apply filters'));
+    await tester.pumpAndSettle();
+
+    expect(find.descendant(of: find.byTooltip('Filter leads'), matching: find.text('1')), findsOneWidget);
+  });
+
+  testWidgets('customers: the filter sheet has no Customer section, and Clear all keeps the list on customers', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    await tester.tap(find.byTooltip('Filter leads'));
+    await tester.pumpAndSettle();
+    expect(find.text('Customers only'), findsNothing);
+    expect(find.text('Non-customers only'), findsNothing);
+
+    await tester.tap(find.text('Clear all'));
+    await tester.pumpAndSettle();
+
+    expect(leadRepo.lastIsCustomer, isTrue);
+  });
+
+  testWidgets('customers: the search icon reveals the search box, typing searches customers, and closing clears it', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+    expect(find.byType(TextField), findsNothing);
+
+    await tester.tap(find.byTooltip('Search customers'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'acme');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(leadRepo.lastSearch, 'acme');
+    expect(leadRepo.lastIsCustomer, isTrue);
+
+    await tester.tap(find.byTooltip('Close search'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(leadRepo.lastSearch, isNull);
+  });
+
+  testWidgets('customers: the pipeline board icon and the More menu are in the header', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    expect(find.byTooltip('Pipeline view'), findsOneWidget);
+    expect(find.byTooltip('More'), findsOneWidget);
+  });
+
+  testWidgets('customers: there are no date chips (those belong to Allocations)', (tester) async {
+    await _pumpLeadListScreen(tester, leadRepository: FakeLeadRepository()..leadsToReturn = [testLead(id: 'l1', isCustomer: true)]..totalToReturn = 1);
+
+    expect(find.byKey(const Key('range-overall')), findsNothing);
+  });
+
+  // ---- Allocations tab: title + search, date chips, every lead ----
+
+  testWidgets('allocations: the header is just the title with a search icon at its right', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1')]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+
+    final title = find.byKey(const Key('allocations-title'));
+    final search = find.byTooltip('Search leads');
+    expect(tester.widget<Text>(title).data, 'Allocations');
+    expect(tester.getTopLeft(search).dx, greaterThan(tester.getTopRight(title).dx - 1));
+    expect((tester.getCenter(search).dy - tester.getCenter(title).dy).abs(), lessThan(10));
+
+    // Everything that moved to the Customers header is gone from here.
+    expect(find.byKey(const Key('allocations-status-selector')), findsNothing);
+    expect(find.byTooltip('Filter leads'), findsNothing);
+    expect(find.byTooltip('Pipeline view'), findsNothing);
+    expect(find.byTooltip('More'), findsNothing);
+  });
+
+  testWidgets('allocations: every lead is requested, with no status pre-filter and not limited to customers', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..statusesToReturn = [newStatus, contactedStatus]
+      ..leadsToReturn = [testLead(id: 'l1', name: 'Acme Corp')]
+      ..totalToReturn = 1;
+
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+
+    expect(leadRepo.lastStatusId, isNull);
+    expect(leadRepo.lastIsCustomer, isNull);
+    expect(find.text('Acme Corp'), findsOneWidget);
+  });
+
+  testWidgets('allocations: with none it explains where allocations come from, and adding a lead is still possible', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = []
+      ..totalToReturn = 0;
+
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+
+    expect(find.text('No allocations found'), findsOneWidget);
+    expect(find.textContaining('bulk upload or data source integration from the admin web'), findsOneWidget);
+    expect(find.byTooltip('Add lead'), findsOneWidget);
+  });
+
+  testWidgets('allocations: the search icon reveals the search box, typing searches, and closing clears it', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1')]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+    expect(find.byType(TextField), findsNothing);
+
+    await tester.tap(find.byTooltip('Search leads'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'acme');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(leadRepo.lastSearch, 'acme');
+
+    await tester.tap(find.byTooltip('Close search'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+    expect(leadRepo.lastSearch, isNull);
+  });
+
+  testWidgets('allocations: date chips: Last 30 Days sends a lower bound, Overall clears it', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1')]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+    expect(find.text('Overall'), findsOneWidget);
+    expect(find.text('Select Range'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('range-last-30')));
+    await tester.pumpAndSettle();
+
+    final now = DateTime.now();
+    expect(leadRepo.lastCreatedFrom, DateTime(now.year, now.month, now.day - 30));
+    expect(leadRepo.lastCreatedTo, isNull);
+
+    await tester.tap(find.byKey(const Key('range-overall')));
+    await tester.pumpAndSettle();
+
+    expect(leadRepo.lastCreatedFrom, isNull);
+    expect(leadRepo.lastCreatedTo, isNull);
+  });
+
+  testWidgets('allocations: date chips: Select Range applies both ends and the chip shows the range', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1')]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+
+    await tester.tap(find.byKey(const Key('range-custom')));
+    await tester.pumpAndSettle();
+    // The Material range picker opens on the current month. Tapping the 1st twice picks a one-day
+    // range that is valid on any date this test runs.
+    await tester.tap(find.text('1').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final now = DateTime.now();
+    expect(leadRepo.lastCreatedFrom, DateTime(now.year, now.month, 1));
+    expect(leadRepo.lastCreatedTo, DateTime(now.year, now.month, 1, 23, 59, 59));
+    expect(find.text('Select Range'), findsNothing);
+  });
+
+  testWidgets('allocations: tapping a lead opens its lead details', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'l1', name: 'Acme Corp')]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo, mode: LeadListMode.allocations);
+
+    await tester.tap(find.text('Acme Corp'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('LEAD DETAIL l1'), findsOneWidget);
+  });
+
+  testWidgets('customers: tapping a customer opens its Customer 360 view', (tester) async {
+    final leadRepo = FakeLeadRepository()
+      ..leadsToReturn = [testLead(id: 'c1', name: 'Suguna', isCustomer: true)]
+      ..totalToReturn = 1;
+    await _pumpLeadListScreen(tester, leadRepository: leadRepo);
+
+    await tester.tap(find.text('Suguna'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('CUSTOMER 360 c1'), findsOneWidget);
   });
 }

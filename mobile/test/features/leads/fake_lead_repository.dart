@@ -17,7 +17,14 @@ import 'package:mobile/features/leads/domain/repositories/lead_repository.dart';
 TimelineItem testTimelineItem({String id = 'interaction:i1', String type = 'note', DateTime? occurredAt, String summary = 'A note'}) =>
     TimelineItem(id: id, type: type, occurredAt: occurredAt ?? DateTime.utc(2026, 1, 1), summary: summary, details: const {});
 
-Lead testLead({String id = 'lead-1', String name = 'Acme Corp', List<Tag> tags = const [], bool isCustomer = false}) => Lead(
+Lead testLead({
+  String id = 'lead-1',
+  String name = 'Acme Corp',
+  List<Tag> tags = const [],
+  bool isCustomer = false,
+  MemberSummary? createdBy,
+}) =>
+    Lead(
       id: id,
       workspaceId: 'w1',
       name: name,
@@ -25,6 +32,7 @@ Lead testLead({String id = 'lead-1', String name = 'Acme Corp', List<Tag> tags =
       email: 'acme@example.com',
       priority: 'medium',
       isCustomer: isCustomer,
+      createdByMember: createdBy,
       tags: tags,
       createdAt: DateTime.utc(2026, 1, 1),
       updatedAt: DateTime.utc(2026, 1, 1),
@@ -38,7 +46,6 @@ class FakeLeadRepository implements LeadRepository {
   Lead? leadToReturn;
   Object? createError;
   Object? updateError;
-  Object? deleteError;
   Object? tagError;
   List<Interaction> interactionsToReturn = const [];
   List<LeadStatus> statusesToReturn = const [];
@@ -76,7 +83,6 @@ class FakeLeadRepository implements LeadRepository {
   String? lastTagId;
   LeadDraft? lastCreateDraft;
   LeadDraft? lastUpdateDraft;
-  bool deleteCalled = false;
   String? lastAssignedMemberId;
   bool lastAssignCalled = false;
   List<String>? lastBulkLeadIds;
@@ -84,6 +90,18 @@ class FakeLeadRepository implements LeadRepository {
   String? lastBulkMemberId;
   String? lastBulkStatusId;
   String? lastImportCsvContent;
+
+  /// What countVisibleLeads answers; defaults to [totalToReturn].
+  int? visibleTotalToReturn;
+  int countVisibleCallCount = 0;
+  bool? lastCountIsCustomer;
+
+  @override
+  Future<int> countVisibleLeads({required String accessToken, required String workspaceId, bool? isCustomer}) async {
+    countVisibleCallCount++;
+    lastCountIsCustomer = isCustomer;
+    return visibleTotalToReturn ?? totalToReturn;
+  }
 
   @override
   Future<LeadPage> listLeads({
@@ -140,10 +158,24 @@ class FakeLeadRepository implements LeadRepository {
     return testLead(id: leadId, name: draft.name);
   }
 
+  String? lastOutcomeLeadId;
+  String? lastOutcomeStatusId;
+  Map<String, Object?>? lastOutcomeCustomFields;
+  Object? outcomeError;
+
   @override
-  Future<void> deleteLead({required String accessToken, required String workspaceId, required String leadId}) async {
-    if (deleteError != null) throw deleteError!;
-    deleteCalled = true;
+  Future<Lead> applyCallOutcome({
+    required String accessToken,
+    required String workspaceId,
+    required String leadId,
+    String? statusId,
+    Map<String, Object?>? customFields,
+  }) async {
+    if (outcomeError != null) throw outcomeError!;
+    lastOutcomeLeadId = leadId;
+    lastOutcomeStatusId = statusId;
+    lastOutcomeCustomFields = customFields;
+    return leadToReturn ?? testLead(id: leadId);
   }
 
   @override

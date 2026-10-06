@@ -18,7 +18,7 @@ class WorkspaceSelectionScreen extends ConsumerWidget {
     final state = ref.watch(workspaceControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Select Workspace'),
         actions: [
           IconButton(

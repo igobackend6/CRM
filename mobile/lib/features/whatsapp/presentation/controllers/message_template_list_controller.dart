@@ -48,13 +48,6 @@ class MessageTemplateListController extends StateNotifier<MessageTemplateListSta
         state = state.copyWith(items: [for (final t in state.items) if (t.id == templateId) updated else t]);
       });
 
-  Future<bool> deleteTemplate(String templateId) => _mutate(() async {
-        final context = resolveLeadContext(_ref.read)!;
-        await _repository.deleteTemplate(accessToken: context.accessToken, workspaceId: context.workspaceId, templateId: templateId);
-        final remaining = state.items.where((t) => t.id != templateId).toList();
-        state = state.copyWith(status: remaining.isEmpty ? MessageTemplateListStatus.empty : MessageTemplateListStatus.success, items: remaining);
-      });
-
   Future<bool> _mutate(Future<void> Function() action) async {
     if (resolveLeadContext(_ref.read) == null) return false;
     state = state.copyWith(saving: true, clearError: true);

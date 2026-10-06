@@ -8,7 +8,6 @@ class FakeDocumentApiDataSource implements DocumentApiDataSource {
   Object? errorToThrow;
 
   PickedDocumentFile? lastUploadedFile;
-  String? lastDeletedDocumentId;
 
   @override
   Future<Map<String, dynamic>> listDocuments({
@@ -45,14 +44,4 @@ class FakeDocumentApiDataSource implements DocumentApiDataSource {
     return getSignedUrlResponse;
   }
 
-  @override
-  Future<void> deleteDocument({
-    required String accessToken,
-    required String workspaceId,
-    required String leadId,
-    required String documentId,
-  }) async {
-    if (errorToThrow != null) throw errorToThrow!;
-    lastDeletedDocumentId = documentId;
-  }
 }

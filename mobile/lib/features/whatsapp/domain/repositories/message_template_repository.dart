@@ -18,5 +18,4 @@ abstract class MessageTemplateRepository {
     String? body,
   });
 
-  Future<void> deleteTemplate({required String accessToken, required String workspaceId, required String templateId});
 }

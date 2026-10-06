@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -6,6 +6,7 @@ from supabase import Client
 
 from app.core.date_ranges import resolve_report_range, utc_now
 from app.core.exceptions import ValidationError
+from app.core.timeparse import parse_supabase_datetime
 from app.repositories.calls import CallRepository
 from app.repositories.followups import FollowUpRepository
 from app.repositories.lead_reference import CallOutcomeRepository, LeadSourceRepository, LeadStatusRepository, MemberRepository
@@ -214,6 +215,100 @@ class ReportService:
             "customer_count": customer_count,
             "lost_leads": lost_leads,
             "active_pipeline_count": active_pipeline_count,
+        }
+
+    # ---- Call trends (Analytics hub → Call Analytics) ----
+
+    _CALL_TREND_STEPS = {"hour": timedelta(hours=1), "day": timedelta(days=1)}
+    # Bounds the zero-filled bucket list (and so the response) no matter
+    # what window a client asks for: 31 days of hours is 744, a year of
+    # days is 366 — anything past this is a misuse, not a real picker.
+    _CALL_TREND_MAX_BUCKETS = 800
+
+    def get_call_trends(
+        self,
+        workspace_id: UUID,
+        *,
+        since: datetime,
+        until: datetime,
+        granularity: str,
+        direction: str,
+    ) -> dict[str, Any]:
+        """The current member's own calls in `[since, until)`, bucketed
+        into zero-filled `hour`/`day` steps counted from `since` itself.
+
+        Buckets are anchored to `since` rather than to a UTC calendar
+        boundary on purpose: the client sends the instant of its own
+        *local* midnight (Day/Week/Month picker), so counting steps from
+        there makes "hourly" mean the user's local hours without the
+        server knowing or storing any timezone (there is none anywhere
+        in this schema — see core/date_ranges.py). Across a DST change a
+        local day is 23/25 hours and the last bucket edge shifts by an
+        hour; acceptable for a trends chart and documented here rather
+        than papered over.
+
+        Scoped to the current member (same as the personal report) —
+        team-wide call numbers are the Team report's job. `direction`
+        is `all`, `inbound` or `outbound`."""
+        # A client that sends a bare timestamp (no offset) means UTC —
+        # mixing naive and aware datetimes below would otherwise raise.
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=timezone.utc)
+        if granularity not in self._CALL_TREND_STEPS:
+            raise ValidationError("granularity must be 'hour' or 'day'.")
+        if direction not in ("all", "inbound", "outbound"):
+            raise ValidationError("direction must be 'all', 'inbound' or 'outbound'.")
+        if since >= until:
+            raise ValidationError("'since' must be before 'until'.")
+
+        step = self._CALL_TREND_STEPS[granularity]
+        bucket_count = -(-(until - since) // step)  # ceil division on timedeltas
+        if bucket_count > self._CALL_TREND_MAX_BUCKETS:
+            raise ValidationError("That window is too long for the chosen granularity.")
+
+        member_id = self._current_member_id(workspace_id)
+        rows = self._calls.list_for_trends(
+            workspace_id,
+            agent_member_id=member_id,
+            since=since.isoformat(),
+            until=until.isoformat(),
+            direction=None if direction == "all" else direction,
+        )
+
+        calls = [0] * bucket_count
+        talk = [0] * bucket_count
+        leads: list[set[str]] = [set() for _ in range(bucket_count)]
+        window_leads: set[str] = set()
+        for row in rows:
+            index = (parse_supabase_datetime(row["started_at"]) - since) // step
+            if not 0 <= index < bucket_count:
+                continue
+            calls[index] += 1
+            talk[index] += int(row.get("duration_seconds") or 0)
+            lead_id = row.get("lead_id")
+            if lead_id:
+                leads[index].add(lead_id)
+                window_leads.add(lead_id)
+
+        return {
+            "since": since,
+            "until": until,
+            "granularity": granularity,
+            "direction": direction,
+            "buckets": [
+                {
+                    "start": since + step * i,
+                    "calls": calls[i],
+                    "unique_leads": len(leads[i]),
+                    "talk_time_seconds": talk[i],
+                }
+                for i in range(bucket_count)
+            ],
+            "total_calls": sum(calls),
+            "unique_leads": len(window_leads),
+            "total_talk_time_seconds": sum(talk),
         }
 
     # ---- Team report (§"Team Reports") ----

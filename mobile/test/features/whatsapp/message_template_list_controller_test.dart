@@ -58,18 +58,5 @@ void main() {
       expect(container.read(messageTemplateListControllerProvider).errorMessage, contains('already exists'));
     });
 
-    test('deleteTemplate removes it from state', () async {
-      final repo = FakeMessageTemplateRepository()..templatesToReturn = [testTemplate(id: 't1')];
-      final container = await buildWhatsAppTestContainer(templateRepository: repo);
-      addTearDown(container.dispose);
-      addTearDown(keepAlive(container, messageTemplateListControllerProvider).close);
-      await container.read(messageTemplateListControllerProvider.notifier).refresh();
-
-      final ok = await container.read(messageTemplateListControllerProvider.notifier).deleteTemplate('t1');
-
-      expect(ok, isTrue);
-      expect(repo.lastDeletedTemplateId, 't1');
-      expect(container.read(messageTemplateListControllerProvider).items, isEmpty);
-    });
   });
 }

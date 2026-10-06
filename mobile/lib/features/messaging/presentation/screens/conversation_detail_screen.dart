@@ -69,7 +69,7 @@ class _ConversationDetailScreenState extends ConsumerState<ConversationDetailScr
     final currentMemberId = ref.watch(workspaceControllerProvider).selected?.memberId;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Conversation')),
+      appBar: brandAppBar(title: const Text('Conversation')),
       body: Column(
         children: [
           Expanded(child: _buildMessages(state, currentMemberId)),

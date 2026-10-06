@@ -35,6 +35,44 @@ void main() {
       repo.dispose();
     });
 
+    test('a cold start with an expired login refreshes it first, so the app holds the fresh token', () async {
+      final repo = FakeAuthRepository()
+        ..session = const SessionInfo(userId: 'u1', accessToken: 'expired-token', phone: '+919876543210')
+        ..sessionAfterRefresh = const SessionInfo(userId: 'u1', accessToken: 'fresh-token', phone: '+919876543210');
+      final controller = AuthController(repo, FakeMeApiDataSource());
+
+      await waitUntil(() => controller.state.status == AuthStatus.authenticated);
+
+      expect(repo.refreshCalls, greaterThanOrEqualTo(1));
+      expect(controller.state.user!.accessToken, 'fresh-token');
+      controller.dispose();
+      repo.dispose();
+    });
+
+    test('an expired login whose refresh is rejected ends up signed out, not stuck authenticated', () async {
+      final repo = FakeAuthRepository()
+        ..session = const SessionInfo(userId: 'u1', accessToken: 'expired-token', phone: '+919876543210')
+        ..refreshEndsSession = true;
+      final controller = AuthController(repo, FakeMeApiDataSource());
+
+      await waitUntil(() => controller.state.status != AuthStatus.initializing);
+
+      expect(controller.state.status, AuthStatus.unauthenticated);
+      controller.dispose();
+      repo.dispose();
+    });
+
+    test('with nothing expired the session is used as it is', () async {
+      final repo = FakeAuthRepository()..session = const SessionInfo(userId: 'u1', accessToken: 'still-good', phone: '+919876543210');
+      final controller = AuthController(repo, FakeMeApiDataSource());
+
+      await waitUntil(() => controller.state.status == AuthStatus.authenticated);
+
+      expect(controller.state.user!.accessToken, 'still-good');
+      controller.dispose();
+      repo.dispose();
+    });
+
     test('sign-in success -> authenticated', () async {
       final repo = FakeAuthRepository();
       final controller = AuthController(repo, FakeMeApiDataSource());

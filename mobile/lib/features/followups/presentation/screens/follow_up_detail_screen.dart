@@ -22,7 +22,7 @@ class FollowUpDetailScreen extends ConsumerWidget {
     final state = ref.watch(followUpDetailControllerProvider(followUpId));
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Follow-up'),
         actions: [
           if (state.status == FollowUpDetailStatus.success)

@@ -28,6 +28,12 @@ android {
         versionName = flutter.versionName
     }
 
+    // CRM_NO_RECORDER=1 -> a debug build without the accessibility-service call recorder, which
+    // Google Play Protect blocks when an APK is sideloaded (see src/norecorder/AndroidManifest.xml).
+    if (System.getenv("CRM_NO_RECORDER") == "1") {
+        sourceSets.getByName("debug").manifest.srcFile("src/norecorder/AndroidManifest.xml")
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

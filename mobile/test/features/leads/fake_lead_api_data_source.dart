@@ -42,7 +42,6 @@ class FakeLeadApiDataSource implements LeadApiDataSource {
   String? lastTagId;
   Map<String, dynamic>? lastCreateBody;
   Map<String, dynamic>? lastUpdateBody;
-  bool deleteCalled = false;
   bool detachTagCalled = false;
   String? lastAssignedMemberId;
   bool lastAssignHadMemberId = false;
@@ -109,12 +108,6 @@ class FakeLeadApiDataSource implements LeadApiDataSource {
     _maybeThrow();
     lastUpdateBody = body;
     return updateLeadResponse;
-  }
-
-  @override
-  Future<void> deleteLead({required String accessToken, required String workspaceId, required String leadId}) async {
-    _maybeThrow();
-    deleteCalled = true;
   }
 
   @override

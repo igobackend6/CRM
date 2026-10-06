@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.activity import router as activity_router
 from app.api.v1.ai_insights import router as ai_insights_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.calls import router as calls_router
@@ -36,3 +37,4 @@ api_v1_router.include_router(message_templates_router)
 api_v1_router.include_router(reports_router)
 api_v1_router.include_router(custom_fields_router)
 api_v1_router.include_router(device_tokens_router)
+api_v1_router.include_router(activity_router)

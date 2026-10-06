@@ -75,27 +75,11 @@ class _MessageTemplatesScreenState extends ConsumerState<MessageTemplatesScreen>
     }
   }
 
-  Future<void> _confirmDelete(MessageTemplate template) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this template?'),
-        content: Text('"${template.name}" will be removed for the whole workspace.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await ref.read(messageTemplateListControllerProvider.notifier).deleteTemplate(template.id);
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(messageTemplateListControllerProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Message templates'),
         actions: [IconButton(icon: const Icon(Icons.add), tooltip: 'New template', onPressed: () => _openEditor())],
       ),
@@ -129,7 +113,6 @@ class _MessageTemplatesScreenState extends ConsumerState<MessageTemplatesScreen>
                 title: Text(template.name),
                 subtitle: Text(template.body, maxLines: 2, overflow: TextOverflow.ellipsis),
                 onTap: () => _openEditor(template: template),
-                trailing: IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: () => _confirmDelete(template)),
               ),
             );
           },

@@ -23,6 +23,22 @@ class FakeAuthRepository implements AuthRepository {
   @override
   SessionInfo? readCurrentSession() => session;
 
+  /// What a successful refresh of an expired session leaves behind (null = nothing to refresh).
+  SessionInfo? sessionAfterRefresh;
+  bool refreshEndsSession = false;
+  int refreshCalls = 0;
+
+  @override
+  Future<void> refreshIfExpired() async {
+    refreshCalls++;
+    if (refreshEndsSession) {
+      session = null;
+    } else if (sessionAfterRefresh != null) {
+      session = sessionAfterRefresh;
+      sessionAfterRefresh = null;
+    }
+  }
+
   @override
   Stream<void> get authStateChanges => _controller.stream;
 
@@ -37,6 +53,14 @@ class FakeAuthRepository implements AuthRepository {
     if (signInError != null) throw signInError!;
     session = signInWithPhonePasswordOverride?.call() ??
         SessionInfo(userId: 'user-1', accessToken: 'token-1', phone: phone);
+    _controller.add(null);
+  }
+
+  @override
+  Future<void> signInWithEmailPassword({required String email, required String password}) async {
+    if (signInError != null) throw signInError!;
+    session = signInWithPhonePasswordOverride?.call() ??
+        SessionInfo(userId: 'user-1', accessToken: 'token-1', phone: '+919876543210');
     _controller.add(null);
   }
 

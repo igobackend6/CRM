@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 
 /// The app's four bottom-nav destinations, matching the real Runo app's
@@ -25,11 +26,12 @@ class AppBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
       notchMargin: 8,
-      color: theme.colorScheme.surface,
+      // Brand blue, like the top bars; items are white (selected) / soft
+      // white (the rest) on it.
+      color: AppColors.accent,
       surfaceTintColor: Colors.transparent,
       elevation: 8,
       child: Row(
@@ -79,16 +81,23 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = selected ? AppColors.accent : theme.colorScheme.outline;
+    final color = selected ? Colors.white : Colors.white.withValues(alpha: 0.7);
     return Expanded(
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Icon(icon, color: color),
+              ),
               const SizedBox(height: 2),
               Text(
                 label,
@@ -114,8 +123,8 @@ class AppCallFab extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: onPressed,
-      backgroundColor: AppColors.accent,
-      foregroundColor: Colors.white,
+      backgroundColor: Colors.white,
+      foregroundColor: AppColors.accent,
       tooltip: 'Calls',
       shape: const CircleBorder(),
       child: const Icon(Icons.call),

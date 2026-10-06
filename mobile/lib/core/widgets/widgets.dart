@@ -11,6 +11,7 @@ export 'app_bottom_nav_bar.dart';
 export 'app_error_banner.dart';
 export 'app_retry_view.dart';
 export 'app_status_chip.dart';
+export 'brand_app_bar.dart';
 export 'collapsible_section.dart';
 export 'dashed_border_box.dart';
 export 'detail_info_row.dart';

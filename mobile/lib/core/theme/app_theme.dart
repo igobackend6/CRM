@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 import 'app_radius.dart';
@@ -63,15 +64,20 @@ class AppTheme {
       textTheme: textTheme,
       splashFactory: InkSparkle.splashFactory,
 
+      // The brand-blue top bar (see `brandAppBar` for the gradient): white
+      // title and icons, light status-bar icons. `backgroundColor` is the
+      // solid fallback for any bar built without the gradient.
       appBarTheme: AppBarTheme(
-        backgroundColor: background,
-        foregroundColor: colorScheme.onSurface,
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: textTheme.titleLarge,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        titleTextStyle: textTheme.titleLarge?.copyWith(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
 
       cardTheme: CardThemeData(

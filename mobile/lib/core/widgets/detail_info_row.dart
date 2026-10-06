@@ -23,8 +23,8 @@ class DetailInfoRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 110,
-            child: Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
+            width: 124,
+            child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w700)),
           ),
           Expanded(child: Text(value, style: valueColor != null ? TextStyle(color: valueColor) : null)),
           ?trailing,

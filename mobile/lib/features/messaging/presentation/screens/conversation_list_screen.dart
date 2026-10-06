@@ -55,7 +55,7 @@ class _ConversationListScreenState extends ConsumerState<ConversationListScreen>
     final state = ref.watch(conversationListControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Messages')),
+      appBar: brandAppBar(title: const Text('Messages')),
       body: _buildBody(state),
     );
   }

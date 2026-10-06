@@ -104,7 +104,7 @@ class _FollowUpFormScreenState extends ConsumerState<FollowUpFormScreen> {
       // (route_paths.dart's followUpCreateForLead) — this only shows if
       // something navigated here without one.
       return Scaffold(
-        appBar: AppBar(title: const Text('New follow-up')),
+        appBar: brandAppBar(title: const Text('New follow-up')),
         body: const Center(child: Text('Open this from a lead\'s follow-ups section.')),
       );
     }
@@ -125,7 +125,7 @@ class _FollowUpFormScreenState extends ConsumerState<FollowUpFormScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isEditing ? 'Edit follow-up' : 'New follow-up')),
+      appBar: brandAppBar(title: Text(widget.isEditing ? 'Edit follow-up' : 'New follow-up')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Form(

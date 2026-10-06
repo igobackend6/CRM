@@ -35,6 +35,17 @@ abstract class ReportsApiDataSource {
     DateTime? since,
     DateTime? until,
   });
+
+  /// `GET /reports/call-trends` — the caller's own calls bucketed by
+  /// `granularity` (`hour`/`day`) across `[since, until)`, both required.
+  Future<Map<String, dynamic>> getCallTrends({
+    required String accessToken,
+    required String workspaceId,
+    required DateTime since,
+    required DateTime until,
+    required String granularity,
+    required String direction,
+  });
 }
 
 class DioReportsApiDataSource implements ReportsApiDataSource {
@@ -105,6 +116,32 @@ class DioReportsApiDataSource implements ReportsApiDataSource {
       final response = await _dio.get<Map<String, dynamic>>(
         '${_base(workspaceId)}/reports/pipeline',
         queryParameters: _rangeParams(range, since, until),
+        options: ApiClient.authOptions(accessToken),
+      );
+      return response.data ?? const {};
+    } on DioException catch (e) {
+      throw mapDioExceptionToAppException(e);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getCallTrends({
+    required String accessToken,
+    required String workspaceId,
+    required DateTime since,
+    required DateTime until,
+    required String granularity,
+    required String direction,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '${_base(workspaceId)}/reports/call-trends',
+        queryParameters: {
+          'since': since.toUtc().toIso8601String(),
+          'until': until.toUtc().toIso8601String(),
+          'granularity': granularity,
+          'direction': direction,
+        },
         options: ApiClient.authOptions(accessToken),
       );
       return response.data ?? const {};

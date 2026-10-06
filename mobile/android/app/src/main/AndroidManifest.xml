@@ -1,12 +1,44 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Network access (Supabase, the backend API, Edge Functions). Flutter only adds this for debug
+         and profile builds, so a release build needs it declared here. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- New Lead's "Others" section — geolocator's location capture on
          the create form (Runo-reference layout). Coarse is enough for a
          city-level pin; requested alongside fine since geolocator's own
          permission dialog covers both together on Android. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Settings > App Security: unlock with the phone's fingerprint / face / PIN (local_auth). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Settings > Connected SIM Details. READ_PHONE_STATE lists the active SIM subscriptions
+         (SubscriptionManager); READ_PHONE_NUMBERS only lets the screen show a SIM's own number
+         when the carrier stored one. Both asked at runtime, only from that screen. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <!-- Settings > Sync Call History: reads the phone's call log (business SIM only; only calls to
+         lead numbers leave the phone). Asked at runtime from that screen. Google Play restricts
+         this permission to default-dialer apps — this app is distributed as a direct/MDM APK. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- Settings > Default Dialer: placing calls from the CRM's own dialer (TelecomManager.placeCall), and
+         the heads-up screen for an incoming call. Only used once the member turns the CRM dialer on. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Settings > Sync Call History > Record calls: the CRM's own call recorder (microphone, while a
+         business-SIM call is active), plus the "Recording call" notification that keeps it alive. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- "Auto speaker": routes a recorded call to the loudspeaker so the microphone also hears the
+         customer (Android gives apps no direct access to the other person's audio). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Settings > Not Sync Notification: puts the "call history not synced" reminder alarm back after
+         the phone restarts. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Lets the app install on phones without telephony (the screen then says SIM isn't available). -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <application
-        android:label="mobile"
+        android:label="Sales CRM"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -30,7 +62,79 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Dialer eligibility (Settings > Default Dialer): show the dialer for a tel: link / Dial intent.
+                 Only dials when the member taps Call. -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="tel"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <!-- No ACTION_VIEW tel: filter on purpose: the app's own Call buttons open tel: links with
+                 ACTION_VIEW, and a second matching app made Android ask "Open with" (an accidental
+                 "Always" made Call open the CRM dialer instead of the phone). -->
+            <!-- "Share > Sales CRM" on a call recording (Google Phone keeps its recordings private
+                 and only lets them out through Share). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="audio/*"/>
+            </intent-filter>
         </activity>
+        <!-- The CRM's call recorder (see CallRecorderService.kt). Turned on by the employee in
+             Android Settings > Accessibility; reads no screen content. -->
+        <service
+            android:name=".CallRecorderService"
+            android:exported="false"
+            android:label="@string/call_recorder_accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/call_recorder_accessibility" />
+        </service>
+        <service
+            android:name=".CallRecordingKeepAlive"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+        <receiver android:name=".NotSyncReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <!-- The CRM's call screen and phone-stack service (used only while the CRM is the default phone app). -->
+        <activity
+            android:name=".CallActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+        <service
+            android:name=".CrmInCallService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data android:name="android.telecom.IN_CALL_SERVICE_UI" android:value="true" />
+            <meta-data android:name="android.telecom.IN_CALL_SERVICE_RINGING" android:value="false" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
+        <receiver android:name=".CallBackReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -55,6 +159,11 @@
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
+        </intent>
+        <!-- Lead Detail's Call button: canLaunchUrl(tel:) needs to see a dialer app. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
         </intent>
     </queries>
 </manifest>

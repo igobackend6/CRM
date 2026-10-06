@@ -67,34 +67,6 @@ void main() {
       expect(container.read(leadDetailControllerProvider('l1')).lead?.tags, isEmpty);
     });
 
-    test('deleteLead returns true on success', () async {
-      final leadRepo = FakeLeadRepository()..leadToReturn = testLead(id: 'l1');
-      final container = await buildLeadTestContainer(leadRepository: leadRepo);
-      addTearDown(container.dispose);
-      addTearDown(keepAlive(container, leadDetailControllerProvider('l1')).close);
-      await waitUntil(() => container.read(leadDetailControllerProvider('l1')).status == LeadDetailStatus.success);
-
-      final ok = await container.read(leadDetailControllerProvider('l1').notifier).deleteLead();
-
-      expect(ok, isTrue);
-      expect(leadRepo.deleteCalled, isTrue);
-    });
-
-    test('deleteLead returns false and surfaces the error on failure', () async {
-      final leadRepo = FakeLeadRepository()
-        ..leadToReturn = testLead(id: 'l1')
-        ..deleteError = const PermissionDeniedException('Missing permission: leads.delete');
-      final container = await buildLeadTestContainer(leadRepository: leadRepo);
-      addTearDown(container.dispose);
-      addTearDown(keepAlive(container, leadDetailControllerProvider('l1')).close);
-      await waitUntil(() => container.read(leadDetailControllerProvider('l1')).status == LeadDetailStatus.success);
-
-      final ok = await container.read(leadDetailControllerProvider('l1').notifier).deleteLead();
-
-      expect(ok, isFalse);
-      expect(container.read(leadDetailControllerProvider('l1')).errorMessage, 'Missing permission: leads.delete');
-    });
-
     test('loads allocation history alongside the lead', () async {
       final leadRepo = FakeLeadRepository()
         ..leadToReturn = testLead(id: 'l1')

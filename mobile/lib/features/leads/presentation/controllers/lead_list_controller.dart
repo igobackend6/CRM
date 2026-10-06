@@ -21,7 +21,10 @@ import 'lead_request_context.dart';
 /// unnecessarily"), debounced client-side so typing doesn't fire a
 /// request per keystroke.
 class LeadListController extends StateNotifier<LeadListState> with RealtimeRefreshMixin<LeadListState> {
-  LeadListController(this._repository, this._ref) : super(const LeadListState.initial()) {
+  /// [initialFilters] lets a screen pin a filter from the start (the Customers tab pins
+  /// `isCustomer: true`); every other list starts unfiltered.
+  LeadListController(this._repository, this._ref, {LeadFilters initialFilters = const LeadFilters.empty()})
+      : super(const LeadListState.initial().copyWith(filters: initialFilters)) {
     // Reacts to workspace selection rather than refreshing once in the
     // constructor — mirrors WorkspaceController's `ref.listen(auth...)`
     // pattern (Phase 4). The router only allows /app/leads once a

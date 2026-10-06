@@ -28,10 +28,25 @@ class AuthController extends StateNotifier<AuthState> {
   final MeApiDataSource _meApiDataSource;
   StreamSubscription<void>? _authSubscription;
 
+  /// Sets [state] unless the controller has been disposed while an async step (token refresh,
+  /// profile load, backend check) was still in flight.
+  void _emit(AuthState next) {
+    if (mounted) state = next;
+  }
+
   Future<void> _restoreFromSession() async {
+    // A cold start with yesterday's login: get a fresh token before anything calls the backend.
+    try {
+      await _repository.refreshIfExpired();
+    } catch (e) {
+      AppLogger.warning('Session refresh check failed: $e');
+    }
+    if (!mounted) return;
     final session = _repository.readCurrentSession();
     if (session == null) {
-      state = const AuthState.unauthenticated();
+      // Keep an error we just raised (e.g. "Your session is no longer valid"): our own sign-out
+      // fires an auth event that would otherwise replace it with a silent signed-out state.
+      if (state.status != AuthStatus.error) _emit(const AuthState.unauthenticated());
       return;
     }
     await _establishSession(session);
@@ -42,7 +57,7 @@ class AuthController extends StateNotifier<AuthState> {
     // everything else — no profile load, no backend /me check — until
     // the user sets their own password (`changePassword` below).
     if (session.mustChangePassword) {
-      state = const AuthState.mustChangePassword();
+      _emit(const AuthState.mustChangePassword());
       return;
     }
 
@@ -59,10 +74,10 @@ class AuthController extends StateNotifier<AuthState> {
         case BackendMeUnauthorized():
           AppLogger.warning('Backend rejected the session (401); signing out.');
           await _repository.signOut();
-          state = const AuthState.error('Your session is no longer valid. Please sign in again.');
+          _emit(const AuthState.error('Your session is no longer valid. Please sign in again.'));
           return;
         case BackendMeForbidden():
-          state = const AuthState.error('Your account does not have access to this application.');
+          _emit(const AuthState.error('Your account does not have access to this application.'));
           return;
         case BackendMeNetworkError(:final message):
           // Non-fatal: Supabase's own session remains the source of
@@ -72,12 +87,12 @@ class AuthController extends StateNotifier<AuthState> {
           break;
       }
 
-      state = AuthState.authenticated(user);
+      _emit(AuthState.authenticated(user));
     } on AppException catch (e) {
-      state = AuthState.error(e.message);
+      _emit(AuthState.error(e.message));
     } catch (e) {
       AppLogger.error('Unexpected error establishing session', error: e);
-      state = const AuthState.error('Something went wrong loading your account.');
+      _emit(const AuthState.error('Something went wrong loading your account.'));
     }
   }
 
@@ -96,6 +111,30 @@ class AuthController extends StateNotifier<AuthState> {
     } catch (e) {
       AppLogger.error('Unexpected sign-in error', error: e);
       state = const AuthState.error('Sign-in failed. Please try again.');
+    }
+  }
+
+  Future<void> signInWithEmail({required String email, required String password}) async {
+    state = const AuthState.authenticating();
+    try {
+      await _repository.signInWithEmailPassword(email: email, password: password);
+      final session = _repository.readCurrentSession();
+      if (session == null) {
+        state = const AuthState.unauthenticated();
+        return;
+      }
+      await _establishSession(session);
+    } on AppException catch (e) {
+      state = AuthState.error(e.message);
+    } catch (e) {
+      AppLogger.error('Unexpected sign-in error', error: e);
+      state = const AuthState.error('Sign-in failed. Please try again.');
+    }
+  }
+
+  void clearError() {
+    if (state.status == AuthStatus.error) {
+      state = const AuthState.unauthenticated();
     }
   }
 

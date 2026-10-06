@@ -7,7 +7,6 @@ class FakeMessageTemplateApiDataSource implements MessageTemplateApiDataSource {
   Object? errorToThrow;
 
   Map<String, dynamic>? lastUpdateChanges;
-  String? lastDeletedTemplateId;
 
   @override
   Future<List<dynamic>> listTemplates({required String accessToken, required String workspaceId}) async {
@@ -38,9 +37,4 @@ class FakeMessageTemplateApiDataSource implements MessageTemplateApiDataSource {
     return updateTemplateResponse;
   }
 
-  @override
-  Future<void> deleteTemplate({required String accessToken, required String workspaceId, required String templateId}) async {
-    if (errorToThrow != null) throw errorToThrow!;
-    lastDeletedTemplateId = templateId;
-  }
 }

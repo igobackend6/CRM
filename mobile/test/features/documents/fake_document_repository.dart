@@ -20,11 +20,9 @@ class FakeDocumentRepository implements DocumentRepository {
   String signedUrlToReturn = 'https://signed.example/file.pdf';
   AppException? signedUrlError;
 
-  AppException? deleteError;
 
   int? lastListOffset;
   PickedDocumentFile? lastUploadedFile;
-  String? lastDeletedDocumentId;
 
   @override
   Future<DocumentPage> listDocuments({
@@ -62,14 +60,4 @@ class FakeDocumentRepository implements DocumentRepository {
     return signedUrlToReturn;
   }
 
-  @override
-  Future<void> deleteDocument({
-    required String accessToken,
-    required String workspaceId,
-    required String leadId,
-    required String documentId,
-  }) async {
-    lastDeletedDocumentId = documentId;
-    if (deleteError != null) throw deleteError!;
-  }
 }

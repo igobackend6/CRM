@@ -17,6 +17,8 @@ import '../../../documents/presentation/providers/document_providers.dart';
 import '../../domain/entities/lead_draft.dart';
 import '../../domain/entities/lead_form_state.dart';
 import '../../domain/entities/lead_status.dart';
+import '../../domain/lead_edit_access.dart';
+import '../../../workspace/presentation/providers/workspace_providers.dart';
 import '../controllers/lead_request_context.dart';
 import '../providers/leads_providers.dart';
 
@@ -239,8 +241,24 @@ class _LeadFormScreenState extends ConsumerState<LeadFormScreen> {
       }
     });
 
+    // Editing is only for leads this member created; an admin-allocated lead cannot be edited here even
+    // if the page is reached some other way.
+    if (widget.isEditing) {
+      final detail = ref.watch(leadDetailControllerProvider(widget.leadId!)).lead;
+      final currentMemberId = ref.watch(workspaceControllerProvider.select((w) => w.selected?.memberId));
+      if (detail != null && !canEditLead(detail, currentMemberId)) {
+        return Scaffold(
+          appBar: brandAppBar(title: const Text('Edit lead')),
+          body: const EmptyStateView(
+            icon: Icons.lock_outline,
+            message: 'This lead was allocated to you by an admin, so its details cannot be edited here.',
+          ),
+        );
+      }
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isEditing ? 'Edit lead' : 'New lead')),
+      appBar: brandAppBar(title: Text(widget.isEditing ? 'Edit lead' : 'New lead')),
       body: referenceAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => const Center(child: Text('Could not load status/source options.')),

@@ -153,39 +153,5 @@ void main() {
 
       expect(await container.read(documentListControllerProvider('l1').notifier).openDocument('d1'), isFalse);
     });
-
-    test('deleteDocument removes the item from state', () async {
-      final repo = FakeDocumentRepository()
-        ..documentsToReturn = [_document('d1')]
-        ..documentsTotalToReturn = 1;
-      final container = await buildDocumentsTestContainer(documentRepository: repo);
-      addTearDown(container.dispose);
-      addTearDown(keepAlive(container, documentListControllerProvider('l1')).close);
-      await container.read(documentListControllerProvider('l1').notifier).refresh();
-
-      await container.read(documentListControllerProvider('l1').notifier).deleteDocument('d1');
-
-      final state = container.read(documentListControllerProvider('l1'));
-      expect(state.items, isEmpty);
-      expect(state.status, DocumentListStatus.empty);
-      expect(repo.lastDeletedDocumentId, 'd1');
-    });
-
-    test('a delete failure surfaces the error message without removing the item', () async {
-      final repo = FakeDocumentRepository()
-        ..documentsToReturn = [_document('d1')]
-        ..documentsTotalToReturn = 1
-        ..deleteError = const NetworkException('offline');
-      final container = await buildDocumentsTestContainer(documentRepository: repo);
-      addTearDown(container.dispose);
-      addTearDown(keepAlive(container, documentListControllerProvider('l1')).close);
-      await container.read(documentListControllerProvider('l1').notifier).refresh();
-
-      await container.read(documentListControllerProvider('l1').notifier).deleteDocument('d1');
-
-      final state = container.read(documentListControllerProvider('l1'));
-      expect(state.items, hasLength(1));
-      expect(state.errorMessage, 'offline');
-    });
   });
 }

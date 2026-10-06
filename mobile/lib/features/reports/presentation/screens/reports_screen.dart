@@ -10,10 +10,9 @@ import '../../domain/entities/personal_report.dart';
 import '../../domain/entities/pipeline_report.dart';
 import '../../domain/entities/team_report.dart';
 import '../../domain/entities/team_report_state.dart';
+import '../../domain/reports_access.dart';
 import '../providers/reports_providers.dart';
 import '../widgets/report_date_range_chips.dart';
-
-const _managerRoles = {'manager', 'admin', 'ceo'};
 
 /// Phase 21C — Complete Reports & Analytics. A dedicated screen (its own
 /// route, `RoutePaths.reports`, reachable from the app shell's app bar —
@@ -43,10 +42,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> with SingleTicker
   Widget build(BuildContext context) {
     final filter = ref.watch(reportDateFilterProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: brandAppBar(
         title: const Text('Reports'),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+          dividerColor: Colors.transparent,
           tabs: const [Tab(text: 'Personal'), Tab(text: 'Team'), Tab(text: 'Pipeline')],
         ),
       ),
@@ -165,7 +168,7 @@ class _ManagerGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(workspaceControllerProvider).selected?.roleName;
-    if (role != null && !_managerRoles.contains(role)) {
+    if (!canViewTeamReports(role)) {
       return const Padding(
         padding: EdgeInsets.all(AppSpacing.lg),
         child: EmptyStateView(icon: Icons.lock_outline, message: 'Manager access is required to view this report.'),

@@ -44,7 +44,7 @@ class CustomerDetailScreen extends ConsumerWidget {
     final state = ref.watch(customerDetailControllerProvider(customerId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Customer 360')),
+      appBar: brandAppBar(title: const Text('Customer 360')),
       body: _buildBody(context, ref, state),
     );
   }

@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Debug/test builds only: lets the app reach the backend over plain http on the PC's Wi-Fi
+         address (env/.env.staging). Android blocks cleartext http otherwise. Release builds don't get
+         this and must use an https backend. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

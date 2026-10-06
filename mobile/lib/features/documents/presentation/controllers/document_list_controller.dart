@@ -132,30 +132,4 @@ class DocumentListController extends StateNotifier<DocumentListState> {
     }
   }
 
-  Future<void> deleteDocument(String documentId) async {
-    final context = resolveLeadContext(_ref.read);
-    if (context == null) return;
-
-    state = state.copyWith(deletingId: documentId);
-    try {
-      await _repository.deleteDocument(
-        accessToken: context.accessToken,
-        workspaceId: context.workspaceId,
-        leadId: leadId,
-        documentId: documentId,
-      );
-      final remaining = state.items.where((d) => d.id != documentId).toList();
-      state = state.copyWith(
-        status: remaining.isEmpty ? DocumentListStatus.empty : DocumentListStatus.success,
-        items: remaining,
-        total: state.total - 1,
-        clearDeletingId: true,
-      );
-    } on AppException catch (e) {
-      state = state.copyWith(clearDeletingId: true, errorMessage: e.message);
-    } catch (e) {
-      AppLogger.error('Failed to delete document $documentId', error: e);
-      state = state.copyWith(clearDeletingId: true, errorMessage: 'Could not delete the document.');
-    }
-  }
 }

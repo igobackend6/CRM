@@ -4,8 +4,8 @@ enum DocumentListStatus { initial, loading, refreshing, loadingMore, success, em
 
 /// Mirrors every other list-with-pagination state in this app
 /// (TimelineListState/FollowUpListState/the original, now-retired
-/// customer360 DocumentListState). `uploading`/`deletingId` are
-/// additive to the base list status — an upload or delete in flight
+/// customer360 DocumentListState). `uploading` is
+/// additive to the base list status — an upload in flight
 /// doesn't interrupt whatever the list itself is currently showing.
 class DocumentListState {
   const DocumentListState._({
@@ -16,7 +16,6 @@ class DocumentListState {
     this.errorMessage,
     this.uploading = false,
     this.uploadError,
-    this.deletingId,
   });
 
   const DocumentListState.initial() : this._(status: DocumentListStatus.initial);
@@ -28,7 +27,6 @@ class DocumentListState {
   final String? errorMessage;
   final bool uploading;
   final String? uploadError;
-  final String? deletingId;
 
   bool get hasMore => items.length < total;
 
@@ -41,8 +39,6 @@ class DocumentListState {
     bool? uploading,
     String? uploadError,
     bool clearUploadError = false,
-    String? deletingId,
-    bool clearDeletingId = false,
   }) {
     return DocumentListState._(
       status: status ?? this.status,
@@ -52,7 +48,6 @@ class DocumentListState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       uploading: uploading ?? this.uploading,
       uploadError: clearUploadError ? null : (uploadError ?? this.uploadError),
-      deletingId: clearDeletingId ? null : (deletingId ?? this.deletingId),
     );
   }
 }

@@ -38,7 +38,7 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
     final state = ref.watch(pipelineControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pipeline')),
+      appBar: brandAppBar(title: const Text('Pipeline')),
       body: Column(
         children: [
           Padding(

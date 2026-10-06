@@ -1,0 +1,152 @@
+{
+  "name": "IGO Group Sales CRM — Login Page",
+  "description": "Design and UI spec for the live login screen, extracted directly from the current app source (src/pages/Login.jsx, src/components/RobotMascot.jsx, src/components/RobotScene.jsx, src/index.css). This documents what is actually implemented and running in the app today — it is a reference for a designer/developer, not a mockup.",
+  "sourceFiles": [
+    "src/pages/Login.jsx",
+    "src/components/RobotMascot.jsx",
+    "src/components/RobotScene.jsx",
+    "src/index.css"
+  ],
+  "colorPalette": {
+    "text": "#4B5468",
+    "textHeading": "#1F2430",
+    "textDim": "#8A93A6",
+    "background": "#F5F6F8",
+    "backgroundRaised": "#FFFFFF",
+    "border": "#E7E9EE",
+    "borderStrong": "#D8DCE4",
+    "accent": "#1D4ED8",
+    "accentSecondary": "#3B82F6",
+    "accentBackground": "#EAF0FD",
+    "gold": "#C6960C",
+    "goldBackground": "#FBF3DC",
+    "danger": "#E53935",
+    "dangerBackground": "#FDECEA",
+    "success": "#2E9E5B",
+    "successBackground": "#E8F7EE",
+    "gradientBrand": "linear-gradient(135deg, #1D4ED8, #3B82F6)",
+    "gradientGold": "linear-gradient(135deg, #C6960C, #E3B23C)"
+  },
+  "typography": {
+    "displayFont": "'Sora', 'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif",
+    "bodyFont": "'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif",
+    "welcomeHeading": { "fontSize": "26px", "fontWeight": 800, "letterSpacing": "-0.02em", "color": "#1F2430", "text": "Welcome back" },
+    "tagline": { "fontSize": "14px", "color": "#8A93A6", "text": "Enter your details to access your workspace" },
+    "brandName": { "fontSize": "15px", "fontWeight": 700, "letterSpacing": "0.06em", "textTransform": "uppercase", "text": "Sales CRM" },
+    "heroCaption": { "fontSize": "20px", "fontWeight": 800, "textTransform": "uppercase", "color": "#FFFFFF", "lines": ["Every lead, every call.", "One clear pipeline."] }
+  },
+  "layout": {
+    "screen": {
+      "description": "Full-viewport centered container",
+      "minHeight": "100vh",
+      "padding": "40px 20px",
+      "background": "linear-gradient(180deg, #AEDCFB 0%, #D9EEFD 55%, #F4FAFF 100%) with three soft white radial highlights layered on top"
+    },
+    "shell": {
+      "description": "The white card holding both panes",
+      "maxWidth": "940px",
+      "minHeight": "560px",
+      "display": "flex (two panes side by side on desktop)",
+      "borderRadius": "26px",
+      "background": "#FFFFFF",
+      "boxShadow": "0 40px 90px -24px rgba(20,50,90,0.35)"
+    },
+    "panes": [
+      {
+        "name": "formPane",
+        "flex": 1,
+        "contents": "Logo, brand name, heading, tagline, Email/Phone segmented toggle, active form (email or phone), submit button",
+        "maxFormWidth": "360px"
+      },
+      {
+        "name": "heroPane",
+        "flex": 1,
+        "background": "radial-gradient(120% 85% at 50% -5%, rgba(255,255,255,0.9), transparent 55%), linear-gradient(195deg, #E7F3FC 0%, #CCE7F9 55%, #AFDBF5 100%)",
+        "contents": "RobotScene (winter world + mascot), caption overlay pinned to bottom"
+      }
+    ],
+    "responsive": {
+      "tablet_900px": {
+        "shellMaxWidth": "720px",
+        "heroPaneFlexBasis": "36%",
+        "mascotWidth": "min(64%, 200px)",
+        "captionFontSize": "16px",
+        "hidden": ["back tree layer", "third cloud layer"]
+      },
+      "mobile_640px": {
+        "layoutDirection": "column (hero pane stacks above/below form, not side by side)",
+        "heroPaneHeight": "170px",
+        "mascotWidth": "min(42%, 130px)",
+        "captionHidden": true,
+        "hidden": [
+          "mountains", "back tree layer", "snow particles",
+          "2nd and 3rd cloud layers", "2nd and 3rd front trees (keeps exactly 1 per side)"
+        ],
+        "animationsDisabled": ["arm wave", "antenna sway/pulse"]
+      },
+      "prefersReducedMotion": {
+        "description": "All continuous animation loops are fully disabled",
+        "disabled": ["mascot idle breathing/arm wave/antenna", "error head-shake", "cloud drift", "snow particles (hidden entirely)"]
+      }
+    }
+  },
+  "components": {
+    "logo": { "asset": "src/assets/igo-group-logo.webp", "displayHeight": "46px" },
+    "modeToggle": {
+      "type": "segmented control",
+      "options": ["Email", "Phone"],
+      "activeStyle": "white pill background, shadow, dark text"
+    },
+    "emailForm": {
+      "fields": [
+        { "label": "Email", "type": "email", "icon": "EmailIcon (shown only when field is empty)" },
+        { "label": "Password", "type": "password", "icon": "LockIcon (shown only when field is empty)" }
+      ],
+      "submitButton": { "label": "Sign in", "busyLabel": "Signing in…" }
+    },
+    "phoneForm": {
+      "fields": [
+        { "label": "Mobile number", "type": "tel", "icon": "CallsIcon (shown only when field is empty)" },
+        { "label": "Password", "type": "password", "icon": "LockIcon (shown only when field is empty)" }
+      ],
+      "submitButton": { "label": "Sign in", "busyLabel": "Signing in…" }
+    },
+    "errorMessage": { "background": "#FDECEA", "color": "#E53935", "shownOnly": "on sign-in failure, matches the actual auth error text" },
+    "heroCaption": {
+      "position": "absolute, pinned to bottom of hero pane",
+      "background": "linear-gradient(180deg, rgba(8,20,40,0) 0%, rgba(6,16,34,0.5) 55%, rgba(5,13,28,0.68) 100%)",
+      "borderRadius": "16px"
+    }
+  },
+  "mascotAndScene": {
+    "concept": "A layered-SVG robot character living inside a small animated winter/snow world, reacting live to what the user is doing on the form",
+    "architecture": "RobotScene (environment: sky, clouds, mountains, trees, snow, particles, parallax) wraps RobotMascot (the character itself) as a child — fully separate components, the mascot never knows about the environment and vice versa",
+    "mascotStates": [
+      { "state": "idle", "trigger": "default / no field focused", "behavior": "gentle breathing animation, idle antenna sway, one arm waves periodically, eyes track the cursor within a small range" },
+      { "state": "email-focus", "trigger": "email or mobile-number field focused", "behavior": "neutral mouth swaps to a smile, eyes keep tracking cursor" },
+      { "state": "password-focus", "trigger": "password field focused", "behavior": "both arms reposition to cover its eyes (privacy gesture), eyes narrow (scaleY 0.45), arm-wave animation stops" },
+      { "state": "success", "trigger": "sign-in succeeds", "behavior": "one-shot bounce animation, eyebrows raise, mouth switches to a happy expression" },
+      { "state": "error", "trigger": "sign-in fails", "behavior": "one-shot head-shake animation, eyebrows angle down/concerned, mouth switches to concerned expression, auto-reverts to idle after 2.2s" }
+    ],
+    "eyeAndHeadTracking": "Head and eyes independently ease toward the real mouse cursor position every animation frame via direct CSS custom-property writes (no React re-render per frame) — decoupled from the environment's own parallax system",
+    "environmentLayers": [
+      { "layer": "sky/backdrop", "detail": "soft blue gradient background on the hero pane itself" },
+      { "layer": "clouds", "count": 3, "detail": "layered, each with its own slow horizontal drift animation (36–52s loops) plus a small mouse-parallax multiplier (3–6px), fluffy white/pale-blue gradient fill" },
+      { "layer": "mountains", "detail": "two-tone pale blue jagged SVG silhouette, barely moves on parallax (2px multiplier)" },
+      { "layer": "pine trees", "detail": "hand-drawn layered SVG pine trees in a back row (smaller, faded, more parallax) and a front row (larger, full opacity, most parallax) — 4 trees per row on desktop" },
+      { "layer": "snow ground", "detail": "rounded white-to-pale-blue gradient mound along the bottom of the scene, plus two smaller snow-bank bumps" },
+      { "layer": "snow particles", "count": 6, "detail": "small falling dots with staggered durations (9–15s) and delays, fade in/out, fixed 420px fall distance" }
+    ],
+    "parallax": {
+      "trigger": "real mouse movement anywhere on the page",
+      "mechanism": "target position eases toward the cursor at a 0.08 ease factor per animation frame, written to --parallax-x/--parallax-y CSS custom properties",
+      "layerMultipliers": { "mountains": "2px", "backTrees": "4px", "clouds": "3-6px depending on layer", "frontTrees": "9px" },
+      "note": "Independent of the mascot's own head/eye cursor-tracking system"
+    }
+  },
+  "behaviorNotes": [
+    "No message is sent or account created automatically anywhere on this screen — it only authenticates against the existing Supabase Auth backend.",
+    "Switching between Email/Phone mode resets any error and returns the mascot to idle.",
+    "This JSON describes the screen exactly as implemented and currently live in the app — the app itself is unchanged by exporting this file."
+  ]
+}
