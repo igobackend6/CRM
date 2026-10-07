@@ -3,7 +3,7 @@
 Good for testing: no server to look after, automatic HTTPS. Move to the VPS (`deploy-vps.md`)
 when you need what Vercel can't do (see "Limits").
 
-Files used: `backend/api/index.py`, `backend/vercel.json`, `backend/.vercelignore`.
+Files used: `backend/api/index.py`, `backend/.vercelignore` (no vercel.json: the FastAPI preset routes requests itself; a rewrite made every path 404).
 Nothing in the app code changes; local running (`uvicorn app.main:app`) is unchanged.
 
 ## Steps

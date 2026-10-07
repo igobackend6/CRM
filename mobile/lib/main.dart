@@ -5,6 +5,7 @@ import 'core/config/app_config.dart';
 import 'core/config/app_flavor.dart';
 import 'features/call_outcome/presentation/widgets/call_outcome_listener.dart';
 import 'features/call_sync/presentation/widgets/call_sync_trigger.dart';
+import 'features/setup/presentation/widgets/permission_gate.dart';
 import 'features/settings/presentation/providers/settings_providers.dart';
 import 'features/settings/presentation/widgets/app_lock_gate.dart';
 import 'core/constants/app_constants.dart';
@@ -50,7 +51,9 @@ class MyApp extends ConsumerWidget {
       // The after-call pop-up can appear over any screen the member returns to; App Security's lock
       // screen covers everything, pop-up included.
       builder: (context, child) => AppLockGate(
-        child: CallSyncTrigger(child: CallOutcomeListener(child: child ?? const SizedBox.shrink())),
+        child: CallSyncTrigger(
+          child: CallOutcomeListener(child: PermissionGate(child: child ?? const SizedBox.shrink())),
+        ),
       ),
     );
   }
