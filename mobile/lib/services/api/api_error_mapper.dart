@@ -28,5 +28,12 @@ AppException mapDioExceptionToAppException(DioException error) {
 
   // Timeouts, no connection, DNS failure, 5xx, or anything else — all
   // treated as retryable rather than a specific client-input problem.
-  return NetworkException(serverMessage ?? 'Could not reach the server. Please try again.', cause: error);
+  final noConnection = error.type == DioExceptionType.connectionError || error.type == DioExceptionType.connectionTimeout;
+  return NetworkException(
+    serverMessage ??
+        (noConnection
+            ? 'Could not reach the server. Check your internet connection and try again.'
+            : 'Could not reach the server. Please try again.'),
+    cause: error,
+  );
 }

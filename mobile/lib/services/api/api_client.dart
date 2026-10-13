@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../core/config/app_config.dart';
+import 'retry_interceptor.dart';
 
 /// Centralized Dio client for calling the Python FastAPI backend. Kept
 /// out of UI widgets, same rule as SupabaseService — see
@@ -12,22 +13,33 @@ import '../../core/config/app_config.dart';
 class ApiClient {
   ApiClient._();
 
-  static final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      // /dashboard/summary issues a series of sequential Supabase queries
-      // (one per lead status, one per active member, plus the base KPI
-      // counts — see DashboardService.get_summary) rather than one
-      // aggregate query; over a real network (physical device, USB
-      // reverse tunnel, or plain WiFi to a remote Supabase project) that
-      // can legitimately exceed 10s even though nothing is actually
-      // stuck. 30s gives it room without masking a truly hung request.
-      receiveTimeout: const Duration(seconds: 30),
-    ),
-  );
+  static final Dio _dio = _build();
+
+  static Dio _build() {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        // Generous on purpose: a phone on a slow or switching network, or a hosted function waking up
+        // after a quiet spell, can legitimately need longer than a desk connection. A truly hung request
+        // still ends; the retry interceptor then tries reads again.
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 45),
+        sendTimeout: const Duration(seconds: 60),
+      ),
+    );
+    dio.interceptors.add(RetryInterceptor(dio));
+    return dio;
+  }
 
   static Dio get instance => _dio;
+
+  /// Wakes a sleeping hosted backend (and warms the connection) at app start, so the first screen does not
+  /// pay for it. Failures are ignored: the screens' own requests (and their retries) take over.
+  static Future<void> warmUp() async {
+    try {
+      await _dio.get<void>('/health', options: Options(receiveTimeout: const Duration(seconds: 20)));
+    } catch (_) {}
+  }
 
   /// Options carrying the caller's own bearer token — pass this to
   /// every authenticated request instead of mutating shared headers.

@@ -10,6 +10,7 @@ import '../../../workspace/presentation/providers/workspace_providers.dart';
 import '../../../dialer/domain/native_dialer_models.dart';
 import '../../../dialer/presentation/providers/native_dialer_providers.dart';
 import '../../../calls/presentation/providers/call_providers.dart' show callListControllerProvider;
+import '../../../../services/api/api_client.dart';
 import '../../../dashboard/presentation/providers/dashboard_providers.dart';
 import '../providers/call_sync_providers.dart';
 
@@ -37,6 +38,7 @@ class _CallSyncTriggerState extends ConsumerState<CallSyncTrigger> with WidgetsB
     // Android's phone stack tells us when a call ends (only while the CRM is the Phone app).
     _calls = ref.read(nativeDialerServiceProvider).callEvents.listen(_onCallEvent, onError: (Object _) {});
     WidgetsBinding.instance.addObserver(this);
+    unawaited(ApiClient.warmUp());
     _timer = Timer.periodic(widget.interval, (_) => _run());
     WidgetsBinding.instance.addPostFrameCallback((_) => _run());
   }
@@ -60,7 +62,13 @@ class _CallSyncTriggerState extends ConsumerState<CallSyncTrigger> with WidgetsB
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
-    if (lifecycle == AppLifecycleState.resumed) _run();
+    if (lifecycle == AppLifecycleState.resumed) {
+      _run();
+      // Back from the background (maybe on another network): re-read Home so nothing stays on an error
+      // or stale numbers, and wake the backend if it went to sleep.
+      refreshHomeData(ref.invalidate);
+      unawaited(ApiClient.warmUp());
+    }
   }
 
   void _run() {
