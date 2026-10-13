@@ -8,7 +8,7 @@
 // permission and member id come from has_permission / current_member_id.
 //
 // POST JSON { action, workspace_id, ... }:
-//   sync_calls            — import call-log entries whose number matches a lead
+//   sync_calls            — import call-log entries (a lead's calls, and calls from numbers that are not leads)
 //   recording_upload_url  — signed upload URL for one call's recording
 //   recording_complete    — register the uploaded file in call_recordings
 //   recording_url         — short-lived playback/download URL
@@ -114,16 +114,14 @@ async function syncCalls(ctx: Ctx, body: Record<string, unknown>) {
   for (const m of (matches ?? []) as { phone_key: string; lead_id: string }[]) leadByPhone.set(m.phone_key, m.lead_id);
 
   const rows = [];
-  let unmatched = 0;
   for (const e of entries) {
-    const leadId = leadByPhone.get(e.phoneKey);
-    if (!leadId) {
-      unmatched++;
-      continue;
-    }
+    // A number that is not a lead is still logged (migration 000034): no lead, and the name the phone
+    // knows it by, or 'Unknown'. A lead's own calls keep showing the lead's name, so none is stored.
+    const leadId = leadByPhone.get(e.phoneKey) ?? null;
     rows.push({
       workspace_id: ctx.workspaceId,
       lead_id: leadId,
+      contact_name: leadId ? null : (e.name ?? "Unknown"),
       agent_member_id: ctx.memberId,
       direction: e.direction,
       state: e.state,
@@ -157,7 +155,8 @@ async function syncCalls(ctx: Ctx, body: Record<string, unknown>) {
     for (const row of data ?? []) synced.push({ key: row.device_call_key, call_id: row.id, lead_id: row.lead_id });
   }
 
-  return { synced, unmatched, invalid };
+  // unmatched is always 0 now: every call is kept (kept in the reply for older app versions).
+  return { synced, unmatched: 0, invalid };
 }
 
 // ---------------------------------------------------------------------------

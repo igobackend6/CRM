@@ -16,6 +16,7 @@ class CallRepositoryImpl implements CallRepository {
     required String workspaceId,
     String? leadId,
     String? direction,
+    String? phone,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -24,6 +25,7 @@ class CallRepositoryImpl implements CallRepository {
       workspaceId: workspaceId,
       leadId: leadId,
       direction: direction,
+      phone: phone,
       limit: limit,
       offset: offset,
     );

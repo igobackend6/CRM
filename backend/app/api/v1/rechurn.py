@@ -24,7 +24,7 @@ router = APIRouter(tags=["rechurn"])
 
 
 @router.get("/workspaces/{workspace_id}/rechurn", response_model=RechurnQueueResponse)
-async def get_rechurn_queue(
+def get_rechurn_queue(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
     segment: str | None = Query(default=None, pattern="^(inactive|lost)$"),

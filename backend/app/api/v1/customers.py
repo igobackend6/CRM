@@ -32,7 +32,7 @@ def _service(client: Client) -> CustomerService:
 
 
 @router.get("/workspaces/{workspace_id}/customers/{customer_id}", response_model=LeadOut)
-async def get_customer(
+def get_customer(
     workspace_id: UUID,
     customer_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -44,7 +44,7 @@ async def get_customer(
 
 
 @router.get("/workspaces/{workspace_id}/customers/{customer_id}/timeline", response_model=TimelineResponse)
-async def get_customer_timeline(
+def get_customer_timeline(
     workspace_id: UUID,
     customer_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -57,7 +57,7 @@ async def get_customer_timeline(
 
 
 @router.get("/workspaces/{workspace_id}/customers/{customer_id}/documents", response_model=DocumentListResponse)
-async def list_customer_documents(
+def list_customer_documents(
     workspace_id: UUID,
     customer_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -69,7 +69,7 @@ async def list_customer_documents(
 
 
 @router.get("/workspaces/{workspace_id}/customers/{customer_id}/follow-ups", response_model=list[FollowUpOut])
-async def list_customer_follow_ups(
+def list_customer_follow_ups(
     workspace_id: UUID,
     customer_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -81,7 +81,7 @@ async def list_customer_follow_ups(
 
 
 @router.post("/workspaces/{workspace_id}/customers/{customer_id}/notes", response_model=InteractionOut, status_code=201)
-async def create_customer_note(
+def create_customer_note(
     workspace_id: UUID,
     customer_id: UUID,
     body: NoteCreate,

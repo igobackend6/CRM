@@ -274,6 +274,7 @@ class CallSyncChannel(private val activity: FragmentActivity) {
             CallLog.Calls.DATE,
             CallLog.Calls.DURATION,
             CallLog.Calls.PHONE_ACCOUNT_ID,
+            CallLog.Calls.CACHED_NAME,
         )
         val rows = mutableListOf<Map<String, Any?>>()
         activity.contentResolver.query(
@@ -289,6 +290,7 @@ class CallSyncChannel(private val activity: FragmentActivity) {
             val date = c.getColumnIndexOrThrow(CallLog.Calls.DATE)
             val duration = c.getColumnIndexOrThrow(CallLog.Calls.DURATION)
             val account = c.getColumnIndexOrThrow(CallLog.Calls.PHONE_ACCOUNT_ID)
+            val cachedName = c.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
             while (c.moveToNext()) {
                 val accountId = if (c.isNull(account)) null else c.getString(account)
                 rows.add(
@@ -298,6 +300,7 @@ class CallSyncChannel(private val activity: FragmentActivity) {
                         "type" to c.getInt(type),
                         "date" to c.getLong(date),
                         "duration" to c.getLong(duration),
+                        "name" to (if (c.isNull(cachedName)) null else c.getString(cachedName)?.trim()?.takeIf { it.isNotEmpty() }),
                         "subscriptionId" to (accountId?.let { accounts[it] ?: it.toIntOrNull() }),
                     ),
                 )

@@ -14,6 +14,8 @@ export interface SyncEntry {
   key: string;
   phone: string;
   phoneKey: string;
+  /** The phone's saved contact name for this number, when it has one. */
+  name: string | null;
   direction: "inbound" | "outbound";
   state: string;
   startedAt: string;
@@ -56,11 +58,14 @@ export function parseSyncEntry(raw: unknown, now: number = Date.now()): SyncEntr
   const duration = r.duration_seconds;
   if (typeof duration !== "number" || !Number.isInteger(duration) || duration < 0 || duration > 24 * 3600) return null;
 
+  const rawName = typeof r.name === "string" ? r.name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+
   const connected = r.state === "ENDED" && duration > 0;
   return {
     key,
     phone,
     phoneKey: pk,
+    name: rawName || null,
     direction: r.direction as "inbound" | "outbound",
     state: r.state,
     startedAt: started.toISOString(),

@@ -53,6 +53,38 @@ CustomField _interestedIn({List<CustomFieldOption>? options}) => CustomField(
       sortOrder: 0,
     );
 
+CustomField _statusField() => const CustomField(
+      id: 'cf2',
+      name: 'Status',
+      code: 'status',
+      fieldType: 'options',
+      options: [
+        CustomFieldOption(code: 'interested', label: 'Interested', sortOrder: 1),
+        CustomFieldOption(code: 'not_interested', label: 'Not Interested', sortOrder: 2),
+      ],
+      autoFill: true,
+      isFilterable: false,
+      isReadonly: false,
+      isMandatory: false,
+      sortOrder: 1,
+    );
+
+CustomField _field(String code, String name, String type, {bool mandatory = false, int order = 5}) => CustomField(
+      id: 'cf-$code',
+      name: name,
+      code: code,
+      fieldType: type,
+      options: const [
+        CustomFieldOption(code: 'a', label: 'Alpha', sortOrder: 1),
+        CustomFieldOption(code: 'b', label: 'Beta', sortOrder: 2),
+      ],
+      autoFill: true,
+      isFilterable: false,
+      isReadonly: false,
+      isMandatory: mandatory,
+      sortOrder: order,
+    );
+
 class _FakeCustomFieldRepository implements CustomFieldRepository {
   List<CustomField> fields = [];
   Object? error;
@@ -109,7 +141,7 @@ Future<_Harness> _pumpApp(WidgetTester tester, {FakeLeadRepository? leads, List<
       (FakeLeadRepository()
         ..leadToReturn = _lead(status: _statusNew)
         ..statusesToReturn = [_statusNew, _statusFollowUp, _statusConverted]);
-  final fieldRepo = _FakeCustomFieldRepository()..fields = fields ?? [_interestedIn()];
+  final fieldRepo = _FakeCustomFieldRepository()..fields = fields ?? [_interestedIn(), _statusField()];
   final launcher = _RecordingLauncher();
   final authRepo = FakeAuthRepository()..session = const SessionInfo(userId: 'u1', accessToken: 'token-1', phone: '+919876543210');
   final workspaceRepo = FakeWorkspaceRepository()..membershipsToReturn = [testMembership('m1', testWorkspace('w1', 'Acme'))];
@@ -252,7 +284,7 @@ void main() {
   });
 
   group('after the call', () {
-    testWidgets('coming back to the app opens the pop-up with Interested In, Status and Submit', (tester) async {
+    testWidgets('coming back to the app opens the pop-up with the admin\'s fields and Submit', (tester) async {
       final h = await _pumpApp(tester);
       await tester.tap(find.byKey(const Key('lead-call-button')));
       await tester.pump();
@@ -262,8 +294,8 @@ void main() {
       expect(find.byKey(const Key('call-outcome-dialog')), findsOneWidget);
       expect(find.text('Call summary'), findsOneWidget);
       expect(find.text('Suguna'), findsWidgets);
-      expect(find.byKey(const Key('call-outcome-interested-in')), findsOneWidget);
-      expect(find.byKey(const Key('call-outcome-status')), findsOneWidget);
+      expect(find.byKey(const Key('call-outcome-field-interested_in')), findsOneWidget);
+      expect(find.byKey(const Key('call-outcome-field-status')), findsOneWidget);
       expect(find.byKey(const Key('call-outcome-submit')), findsOneWidget);
       expect(h.leads.lastOutcomeLeadId, isNull, reason: 'nothing is saved until Submit');
     });
@@ -344,58 +376,114 @@ void main() {
       expect(find.byKey(const Key('call-outcome-dialog')), findsNothing);
     });
 
-    testWidgets('the dropdowns list the admin\'s project types and statuses, starting on the lead\'s current values', (tester) async {
+    testWidgets('the pop-up shows the admin\'s CRM fields, starting on the lead\'s current values', (tester) async {
       await _pumpApp(
         tester,
-        leads: FakeLeadRepository()
-          ..leadToReturn = _lead(status: _statusFollowUp, customFields: {'interested_in': 'polyhouse'})
-          ..statusesToReturn = [_statusNew, _statusFollowUp, _statusConverted],
+        leads: FakeLeadRepository()..leadToReturn = _lead(customFields: {'interested_in': 'polyhouse', 'status': 'interested'}),
       );
       await tester.tap(find.byKey(const Key('lead-call-button')));
       await tester.pump();
       await _leaveAndReturn(tester);
 
-      // Current values are pre-selected.
-      expect(find.descendant(of: find.byKey(const Key('call-outcome-status')), matching: find.text('Follow Up')), findsOneWidget);
-      expect(find.descendant(of: find.byKey(const Key('call-outcome-interested-in')), matching: find.text('Polyhouse')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('call-outcome-field-interested_in')), matching: find.text('Polyhouse')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('call-outcome-field-status')), matching: find.text('Interested')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('call-outcome-interested-in')));
+      await tester.tap(find.byKey(const Key('call-outcome-field-interested_in')));
       await tester.pumpAndSettle();
       for (final label in ['Nursery', 'Polyhouse', 'Joint venture']) {
         expect(find.text(label), findsWidgets);
       }
-      await tester.tap(find.text('Joint venture').last);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('call-outcome-status')));
-      await tester.pumpAndSettle();
-      for (final label in ['New', 'Follow Up', 'Converted']) {
-        expect(find.text(label), findsWidgets);
-      }
     });
 
-    testWidgets('Submit updates that lead with the chosen status and Interested In, then closes the pop-up', (tester) async {
+    testWidgets('the built-in lead status dropdown is gone: only the admin\'s Status field is asked', (tester) async {
+      await _pumpApp(tester);
+      await tester.tap(find.byKey(const Key('lead-call-button')));
+      await tester.pump();
+      await _leaveAndReturn(tester);
+
+      expect(find.text('Status'), findsOneWidget);
+      expect(find.text('Follow Up'), findsNothing);
+      expect(find.text('Converted'), findsNothing);
+    });
+
+    testWidgets('Submit saves every field value on that lead, and leaves the pipeline status alone', (tester) async {
       final h = await _pumpApp(tester);
       await tester.tap(find.byKey(const Key('lead-call-button')));
       await tester.pump();
       await _leaveAndReturn(tester);
 
-      await tester.tap(find.byKey(const Key('call-outcome-interested-in')));
+      await tester.tap(find.byKey(const Key('call-outcome-field-interested_in')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Nursery').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('call-outcome-status')));
+      await tester.tap(find.byKey(const Key('call-outcome-field-status')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Converted').last);
+      await tester.tap(find.text('Not Interested').last);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('call-outcome-submit')));
       await tester.pumpAndSettle();
 
       expect(h.leads.lastOutcomeLeadId, 'l1');
-      expect(h.leads.lastOutcomeStatusId, 's-conv');
-      expect(h.leads.lastOutcomeCustomFields, {'interested_in': 'nursery'});
+      expect(h.leads.lastOutcomeStatusId, isNull);
+      expect(h.leads.lastOutcomeCustomFields, {'interested_in': 'nursery', 'status': 'not_interested'});
       expect(find.byKey(const Key('call-outcome-dialog')), findsNothing);
       expect(find.text('Suguna updated.'), findsOneWidget);
+      expect(h.container.read(pendingCallOutcomeProvider), isNull);
+    });
+
+    testWidgets('a field the admin adds later appears in the pop-up with no app change, in the right kind of input', (tester) async {
+      final h = await _pumpApp(
+        tester,
+        fields: [
+          _interestedIn(),
+          _statusField(),
+          _field('budget', 'Budget', 'number'),
+          _field('remark', 'Remark', 'text'),
+          _field('tags', 'Interests', 'multi_options'),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('lead-call-button')));
+      await tester.pump();
+      await _leaveAndReturn(tester);
+
+      for (final key in ['budget', 'remark', 'tags']) {
+        expect(find.byKey(Key('call-outcome-field-$key')), findsOneWidget, reason: key);
+      }
+      await tester.enterText(find.byKey(const Key('call-outcome-field-budget')), '250000');
+      await tester.enterText(find.byKey(const Key('call-outcome-field-remark')), 'call back Monday');
+      await tester.ensureVisible(find.text('Beta'));
+      await tester.tap(find.text('Beta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('call-outcome-submit')));
+      await tester.pumpAndSettle();
+
+      expect(h.leads.lastOutcomeCustomFields, {'budget': 250000, 'remark': 'call back Monday', 'tags': ['b']});
+    });
+
+    testWidgets('a mandatory field keeps Submit disabled until it is filled', (tester) async {
+      await _pumpApp(tester, fields: [_field('remark', 'Remark', 'text', mandatory: true)]);
+      await tester.tap(find.byKey(const Key('lead-call-button')));
+      await tester.pump();
+      await _leaveAndReturn(tester);
+
+      expect(find.text('Remark *'), findsOneWidget);
+      expect(tester.widget<FilledButton>(find.byKey(const Key('call-outcome-submit'))).onPressed, isNull);
+      await tester.enterText(find.byKey(const Key('call-outcome-field-remark')), 'done');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(find.byKey(const Key('call-outcome-submit'))).onPressed, isNotNull);
+    });
+
+    testWidgets('with no admin fields the pop-up says so and offers Close', (tester) async {
+      final h = await _pumpApp(tester, fields: const []);
+      await tester.tap(find.byKey(const Key('lead-call-button')));
+      await tester.pump();
+      await _leaveAndReturn(tester);
+
+      expect(find.byKey(const Key('call-outcome-no-fields')), findsOneWidget);
+      expect(find.byKey(const Key('call-outcome-submit')), findsNothing);
+      await tester.tap(find.byKey(const Key('call-outcome-close')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('call-outcome-dialog')), findsNothing);
       expect(h.container.read(pendingCallOutcomeProvider), isNull);
     });
 
@@ -414,53 +502,16 @@ void main() {
       expect(find.byKey(const Key('call-outcome-dialog')), findsOneWidget);
     });
 
-    testWidgets('Interested In is a disabled placeholder until the admin adds project types; Status still works', (tester) async {
-      final h = await _pumpApp(tester, fields: const []);
-      await tester.tap(find.byKey(const Key('lead-call-button')));
-      await tester.pump();
-      await _leaveAndReturn(tester);
-
-      expect(find.text('No project types added yet'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('call-outcome-interested-in')), warnIfMissed: false);
-      await tester.pumpAndSettle();
-      expect(find.text('Nursery'), findsNothing);
-
-      await tester.tap(find.byKey(const Key('call-outcome-status')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Follow Up').last);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('call-outcome-submit')));
-      await tester.pumpAndSettle();
-
-      expect(h.leads.lastOutcomeStatusId, 's-follow');
-      expect(h.leads.lastOutcomeCustomFields, isNull);
-    });
-
-    testWidgets('a failure to read custom fields does not stop the status being recorded', (tester) async {
+    testWidgets('if the admin\'s fields cannot be read the pop-up offers Retry and Close, so nothing is lost or stuck', (tester) async {
       final h = await _pumpApp(tester);
       h.fields.error = const NetworkException('offline');
       await tester.tap(find.byKey(const Key('lead-call-button')));
       await tester.pump();
       await _leaveAndReturn(tester);
 
-      expect(find.byKey(const Key('call-outcome-status')), findsOneWidget);
-      expect(find.text('No project types added yet'), findsOneWidget);
-    });
-
-    testWidgets('Submit is disabled until a status is chosen', (tester) async {
-      await _pumpApp(tester, leads: FakeLeadRepository()..leadToReturn = _lead()..statusesToReturn = [_statusNew, _statusFollowUp]);
-      await tester.tap(find.byKey(const Key('lead-call-button')));
-      await tester.pump();
-      await _leaveAndReturn(tester);
-
-      expect(tester.widget<FilledButton>(find.byKey(const Key('call-outcome-submit'))).onPressed, isNull);
-
-      await tester.tap(find.byKey(const Key('call-outcome-status')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('New').last);
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<FilledButton>(find.byKey(const Key('call-outcome-submit'))).onPressed, isNotNull);
+      expect(find.text('offline'), findsOneWidget);
+      expect(find.byKey(const Key('call-outcome-retry')), findsOneWidget);
+      expect(find.byKey(const Key('call-outcome-close')), findsOneWidget);
     });
 
     testWidgets('a save failure shows the message and keeps the pop-up open so it can be retried', (tester) async {

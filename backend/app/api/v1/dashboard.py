@@ -29,7 +29,7 @@ def _service(client: Client) -> DashboardService:
 
 
 @router.get("/workspaces/{workspace_id}/dashboard/summary", response_model=DashboardSummaryOut)
-async def get_dashboard_summary(
+def get_dashboard_summary(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     range: str = Query(default="all", pattern="^(all|today|this_week|this_month)$"),
@@ -45,7 +45,7 @@ async def get_dashboard_summary(
 
 
 @router.get("/workspaces/{workspace_id}/dashboard/recent-activity", response_model=TimelineResponse)
-async def get_dashboard_recent_activity(
+def get_dashboard_recent_activity(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     limit: int = Query(default=20, ge=1, le=50),

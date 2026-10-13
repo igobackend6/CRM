@@ -74,3 +74,12 @@ test("recording paths stay inside {workspace}/{call}/ whatever the file name", (
   assert.ok(!p.includes(".."));
   assert.equal(buildRecordingPath("ws", "call", "", "r"), "ws/call/r_recording");
 });
+
+test("a contact name is kept, trimmed and capped; a missing one is null", () => {
+  const nb = { ...base, direction: "inbound", started_at: new Date(NOW - 3600_000).toISOString(), duration_seconds: 30 };
+  assert.equal(parse({ ...nb, name: "  Thara   Akka " })!.name, "Thara Akka");
+  assert.equal(parse({ ...nb, name: "x".repeat(300) })!.name!.length, 120);
+  assert.equal(parse({ ...nb })!.name, null);
+  assert.equal(parse({ ...nb, name: "   " })!.name, null);
+  assert.equal(parse({ ...nb, name: 42 })!.name, null);
+});

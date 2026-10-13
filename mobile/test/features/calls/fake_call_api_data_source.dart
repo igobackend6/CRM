@@ -15,6 +15,7 @@ class FakeCallApiDataSource implements CallApiDataSource {
   int? lastOffset;
   String? lastLeadId;
   String? lastDirection;
+  String? lastPhone;
   Map<String, dynamic>? lastCreateBody;
 
   void _maybeThrow() {
@@ -27,10 +28,12 @@ class FakeCallApiDataSource implements CallApiDataSource {
     required String workspaceId,
     String? leadId,
     String? direction,
+    String? phone,
     required int limit,
     required int offset,
   }) async {
     _maybeThrow();
+    lastPhone = phone;
     lastOffset = offset;
     lastLeadId = leadId;
     lastDirection = direction;

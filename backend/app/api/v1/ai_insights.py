@@ -28,7 +28,7 @@ def _assistant_service(client: Client) -> AIAssistantService:
 
 
 @router.get("/workspaces/{workspace_id}/calls/{call_id}/ai-insight", response_model=AICallInsightOut | None)
-async def get_call_ai_insight(
+def get_call_ai_insight(
     workspace_id: UUID,
     call_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.CALLS_READ))],
@@ -40,7 +40,7 @@ async def get_call_ai_insight(
 
 
 @router.post("/workspaces/{workspace_id}/calls/{call_id}/ai-insight", response_model=AICallInsightOut)
-async def request_call_ai_insight(
+def request_call_ai_insight(
     workspace_id: UUID,
     call_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.CALLS_UPDATE))],
@@ -54,7 +54,7 @@ async def request_call_ai_insight(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/ai-insights", response_model=list[AICallInsightOut])
-async def list_lead_ai_insights(
+def list_lead_ai_insights(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -69,7 +69,7 @@ async def list_lead_ai_insights(
 
 
 @router.post("/workspaces/{workspace_id}/leads/{lead_id}/ai-assistant", response_model=AIAssistantAnswer)
-async def ask_lead_ai_assistant(
+def ask_lead_ai_assistant(
     workspace_id: UUID,
     lead_id: UUID,
     body: AIAssistantQuestion,

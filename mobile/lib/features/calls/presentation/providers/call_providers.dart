@@ -34,6 +34,12 @@ final leadCallListControllerProvider =
   return CallListController(ref.watch(callRepositoryProvider), ref, leadId: leadId);
 });
 
+/// Every call to/from one number (its last 10 digits): the per-number "Call logs" page.
+final phoneCallListControllerProvider =
+    StateNotifierProvider.autoDispose.family<CallListController, CallListState, String>((ref, phone) {
+  return CallListController(ref.watch(callRepositoryProvider), ref, phone: phone);
+});
+
 final callDetailControllerProvider =
     StateNotifierProvider.autoDispose.family<CallDetailController, CallDetailState, String>((ref, callId) {
   return CallDetailController(ref.watch(callRepositoryProvider), ref, callId);

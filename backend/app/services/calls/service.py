@@ -4,6 +4,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from app.core.parallel import run_parallel
 from app.core.exceptions import ValidationError
 from app.core.timeparse import parse_supabase_datetime
 from app.repositories.calls import CallRepository
@@ -52,8 +53,11 @@ class CallService:
         direction: str | None,
         limit: int,
         offset: int,
+        phone_key: str | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
-        rows, total = self._calls.list_for_workspace(workspace_id, lead_id=lead_id, direction=direction, limit=limit, offset=offset)
+        rows, total = self._calls.list_for_workspace(
+            workspace_id, lead_id=lead_id, direction=direction, phone_key=phone_key, limit=limit, offset=offset
+        )
         return self._enrich(workspace_id, rows), total
 
     def get_call(self, workspace_id: UUID, call_id: UUID) -> dict[str, Any]:
@@ -161,19 +165,26 @@ class CallService:
     def _enrich(self, workspace_id: UUID, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not rows:
             return []
-        lead_ids = {r["lead_id"] for r in rows}
-        lead_names = self._leads.list_names(workspace_id, list(lead_ids))
+        lead_ids = {r["lead_id"] for r in rows if r.get("lead_id")}
         agent_ids = {r.get("agent_member_id") for r in rows if r.get("agent_member_id")}
-        agent_names = self._members.map_names(workspace_id, list(agent_ids))
         outcome_ids = {r.get("outcome_id") for r in rows if r.get("outcome_id")}
-        outcomes = self._outcomes.map_by_ids(workspace_id, list(outcome_ids))
+        # Three independent lookups: side by side.
+        lead_names, agent_names, outcomes = run_parallel(
+            [
+                lambda: self._leads.list_names(workspace_id, list(lead_ids)),
+                lambda: self._members.map_names(workspace_id, list(agent_ids)),
+                lambda: self._outcomes.map_by_ids(workspace_id, list(outcome_ids)),
+            ]
+        )
 
         enriched = []
         for r in rows:
             agent_id = r.get("agent_member_id")
             outcome_id = r.get("outcome_id")
             item = dict(r)
-            item["lead"] = {"id": r["lead_id"], "name": lead_names.get(r["lead_id"], "Unknown lead")}
+            lead_id = r.get("lead_id")
+            # A call to/from a number that is not a lead has no lead (migration 000034).
+            item["lead"] = {"id": lead_id, "name": lead_names.get(lead_id, "Unknown lead")} if lead_id else None
             item["agent_member"] = {"id": agent_id, "full_name": agent_names.get(agent_id)} if agent_id else None
             item["outcome"] = outcomes.get(outcome_id) if outcome_id else None
             enriched.append(item)

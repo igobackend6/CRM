@@ -71,7 +71,7 @@ def _service(client: Client) -> LeadService:
 
 
 @router.get("/workspaces/{workspace_id}/leads", response_model=LeadListResponse)
-async def list_leads(
+def list_leads(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
     search: str | None = Query(default=None, max_length=200),
@@ -108,7 +108,7 @@ async def list_leads(
 
 
 @router.get("/workspaces/{workspace_id}/pipeline", response_model=PipelineResponse)
-async def get_pipeline(
+def get_pipeline(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
     search: str | None = Query(default=None, max_length=200),
@@ -133,7 +133,7 @@ async def get_pipeline(
 
 
 @router.post("/workspaces/{workspace_id}/leads/bulk", response_model=BulkLeadActionResponse)
-async def bulk_lead_action(
+def bulk_lead_action(
     workspace_id: UUID,
     body: BulkLeadActionRequest,
     client: Annotated[Client, Depends(require_workspace_member)],
@@ -167,7 +167,7 @@ async def bulk_lead_action(
 
 
 @router.post("/workspaces/{workspace_id}/leads/import", response_model=LeadImportResponse)
-async def import_leads(
+def import_leads(
     workspace_id: UUID,
     body: LeadImportRequest,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_CREATE))],
@@ -180,7 +180,7 @@ async def import_leads(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}", response_model=LeadOut)
-async def get_lead(
+def get_lead(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -189,7 +189,7 @@ async def get_lead(
 
 
 @router.post("/workspaces/{workspace_id}/leads", response_model=LeadOut, status_code=201)
-async def create_lead(
+def create_lead(
     workspace_id: UUID,
     body: LeadCreate,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_CREATE))],
@@ -198,7 +198,7 @@ async def create_lead(
 
 
 @router.patch("/workspaces/{workspace_id}/leads/{lead_id}", response_model=LeadOut)
-async def update_lead(
+def update_lead(
     workspace_id: UUID,
     lead_id: UUID,
     body: LeadUpdate,
@@ -208,7 +208,7 @@ async def update_lead(
 
 
 @router.patch("/workspaces/{workspace_id}/leads/{lead_id}/status", response_model=LeadOut)
-async def change_lead_status(
+def change_lead_status(
     workspace_id: UUID,
     lead_id: UUID,
     body: LeadStatusChange,
@@ -223,7 +223,7 @@ async def change_lead_status(
 
 
 @router.post("/workspaces/{workspace_id}/leads/{lead_id}/convert", response_model=LeadOut)
-async def convert_lead_to_customer(
+def convert_lead_to_customer(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_UPDATE))],
@@ -240,7 +240,7 @@ async def convert_lead_to_customer(
 
 
 @router.delete("/workspaces/{workspace_id}/leads/{lead_id}", status_code=204)
-async def delete_lead(
+def delete_lead(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_DELETE))],
@@ -249,7 +249,7 @@ async def delete_lead(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/interactions", response_model=list[InteractionOut])
-async def list_interactions(
+def list_interactions(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -258,7 +258,7 @@ async def list_interactions(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/activity", response_model=TimelineResponse)
-async def get_lead_activity(
+def get_lead_activity(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -279,7 +279,7 @@ async def get_lead_activity(
 
 
 @router.post("/workspaces/{workspace_id}/leads/{lead_id}/notes", response_model=InteractionOut, status_code=201)
-async def create_lead_note(
+def create_lead_note(
     workspace_id: UUID,
     lead_id: UUID,
     body: NoteCreate,
@@ -295,7 +295,7 @@ async def create_lead_note(
 
 
 @router.get("/workspaces/{workspace_id}/members", response_model=list[MemberSummary])
-async def list_members(
+def list_members(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[MemberSummary]:
@@ -307,7 +307,7 @@ async def list_members(
 
 
 @router.post("/workspaces/{workspace_id}/leads/{lead_id}/assignment", response_model=LeadOut)
-async def assign_lead(
+def assign_lead(
     workspace_id: UUID,
     lead_id: UUID,
     body: AssignmentRequest,
@@ -322,7 +322,7 @@ async def assign_lead(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/allocations", response_model=list[AllocationOut])
-async def list_allocations(
+def list_allocations(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -338,7 +338,7 @@ async def list_allocations(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/follow-ups", response_model=list[FollowUpOut])
-async def list_lead_follow_ups(
+def list_lead_follow_ups(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -355,7 +355,7 @@ async def list_lead_follow_ups(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/calls", response_model=list[CallOut])
-async def list_lead_calls(
+def list_lead_calls(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -372,7 +372,7 @@ async def list_lead_calls(
 
 
 @router.get("/workspaces/{workspace_id}/lead-statuses", response_model=list[LeadStatusOut])
-async def list_lead_statuses(
+def list_lead_statuses(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[LeadStatusOut]:
@@ -380,7 +380,7 @@ async def list_lead_statuses(
 
 
 @router.get("/workspaces/{workspace_id}/lead-sources", response_model=list[LeadSourceOut])
-async def list_lead_sources(
+def list_lead_sources(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[LeadSourceOut]:
@@ -388,7 +388,7 @@ async def list_lead_sources(
 
 
 @router.get("/workspaces/{workspace_id}/tags", response_model=list[TagOut])
-async def list_tags(
+def list_tags(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[TagOut]:
@@ -396,7 +396,7 @@ async def list_tags(
 
 
 @router.post("/workspaces/{workspace_id}/tags", response_model=TagOut, status_code=201)
-async def create_tag(
+def create_tag(
     workspace_id: UUID,
     body: TagCreate,
     client: Annotated[Client, Depends(require_workspace_member)],
@@ -405,7 +405,7 @@ async def create_tag(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/tags", response_model=list[TagOut])
-async def list_lead_tags(
+def list_lead_tags(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -414,7 +414,7 @@ async def list_lead_tags(
 
 
 @router.post("/workspaces/{workspace_id}/leads/{lead_id}/tags", response_model=TagOut, status_code=201)
-async def attach_lead_tag(
+def attach_lead_tag(
     workspace_id: UUID,
     lead_id: UUID,
     body: LeadTagAttach,
@@ -424,7 +424,7 @@ async def attach_lead_tag(
 
 
 @router.delete("/workspaces/{workspace_id}/leads/{lead_id}/tags/{tag_id}", status_code=204)
-async def detach_lead_tag(
+def detach_lead_tag(
     workspace_id: UUID,
     lead_id: UUID,
     tag_id: UUID,

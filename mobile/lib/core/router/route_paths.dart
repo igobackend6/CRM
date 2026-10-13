@@ -85,6 +85,12 @@ class RoutePaths {
   /// `/app/calls` screen, server-side filtered to one lead.
   static String callsForLead(String leadId) => '/app/calls?leadId=$leadId';
 
+  /// Every call to/from one number (its last 10 digits) - "View all" on a number's page.
+  static String callsForNumber(String phone) => '/app/calls?phone=$phone';
+
+  /// A number's page (the phone's own contact-info page): who it is and its latest call log.
+  static String callNumber(String phone) => '/app/call-number/$phone';
+
   // Phase 10 — Notifications & Activity Alerts. No detail/create routes:
   // a notification isn't its own entity to browse — tapping one
   // navigates straight to the existing lead/follow-up/call/customer

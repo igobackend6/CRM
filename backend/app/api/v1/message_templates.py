@@ -24,7 +24,7 @@ def _service(client: Client) -> MessageTemplateService:
 
 
 @router.get("/workspaces/{workspace_id}/message-templates", response_model=list[MessageTemplateOut])
-async def list_message_templates(
+def list_message_templates(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[MessageTemplateOut]:
@@ -32,7 +32,7 @@ async def list_message_templates(
 
 
 @router.post("/workspaces/{workspace_id}/message-templates", response_model=MessageTemplateOut, status_code=201)
-async def create_message_template(
+def create_message_template(
     workspace_id: UUID,
     body: MessageTemplateCreate,
     client: Annotated[Client, Depends(require_permission(Permission.TEMPLATES_MANAGE))],
@@ -41,7 +41,7 @@ async def create_message_template(
 
 
 @router.patch("/workspaces/{workspace_id}/message-templates/{template_id}", response_model=MessageTemplateOut)
-async def update_message_template(
+def update_message_template(
     workspace_id: UUID,
     template_id: UUID,
     body: MessageTemplateUpdate,
@@ -51,7 +51,7 @@ async def update_message_template(
 
 
 @router.delete("/workspaces/{workspace_id}/message-templates/{template_id}", status_code=204)
-async def delete_message_template(
+def delete_message_template(
     workspace_id: UUID,
     template_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.TEMPLATES_MANAGE))],

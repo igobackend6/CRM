@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -23,6 +24,19 @@ from app.services.customer360.service import CustomerService
 # local calendar day. Documented as a known limitation (Phase 17 report
 # §"Known limitations"), not silently assumed.
 _DATE_RANGES = {"all", "today", "this_week", "this_month"}
+
+# The summary is dozens of small, independent count queries, run side by side instead of one after
+# another. Supabase closes a connection that carries too many simultaneous requests ("Server
+# disconnected"), so the number running at once is capped. Tasks never wait on other pool tasks, so
+# the pool cannot deadlock.
+_POOL = ThreadPoolExecutor(max_workers=6, thread_name_prefix="dash")
+
+
+def _run_all(tasks):
+    """Runs the zero-argument callables side by side; results come back in the same order, and the
+    first error is raised (as it would have been when run one by one)."""
+    futures = [_POOL.submit(t) for t in tasks]
+    return [f.result() for f in futures]
 
 
 def _iso(value: datetime) -> str:
@@ -97,137 +111,117 @@ class DashboardService:
 
     def get_summary(self, workspace_id: UUID, *, range_key: str = "all") -> dict[str, Any]:
         if range_key not in _DATE_RANGES:
-            # Defensive — the route already validates this via a Query
-            # pattern constraint; a service-level caller (or a future
-            # route) gets the same guarantee rather than an obscure
-            # downstream error.
+            # Defensive - the route already validates this via a Query pattern constraint; a
+            # service-level caller gets the same guarantee rather than an obscure downstream error.
             raise ValidationError(f"range must be one of {sorted(_DATE_RANGES)}.")
 
-        recipient_member_id = self._current_member_id(workspace_id)
         now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        _, total_active_leads = self._leads.list_for_workspace(workspace_id, limit=1)
-        _, customers = self._leads.list_for_workspace(workspace_id, is_customer=True, limit=1)
-        _, pending_follow_ups = self._follow_ups.list_for_workspace(workspace_id, status="pending", limit=1)
-        _, completed_follow_ups = self._follow_ups.list_for_workspace(workspace_id, status="completed", limit=1)
-        _, total_calls = self._calls.list_for_workspace(workspace_id, limit=1)
-        _, unread_notifications = self._notifications.list_for_workspace(
-            workspace_id, recipient_member_id, is_read=False, limit=1
-        )
-
-        default_status_id = self._default_status_id(workspace_id)
-        if default_status_id is not None:
-            _, new_leads = self._leads.list_for_workspace(workspace_id, status_id=default_status_id, limit=1)
-        else:
-            # No default lead status configured for this workspace (an
-            # admin never set one) — "new leads" has nothing to count
-            # against rather than guessing a fallback definition.
-            new_leads = 0
-
-        summary: dict[str, Any] = {
-            "total_active_leads": total_active_leads,
-            "new_leads": new_leads,
-            "customers": customers,
-            "pending_follow_ups": pending_follow_ups,
-            "overdue_follow_ups": self._follow_ups.count_overdue(workspace_id, _iso(now)),
-            "completed_follow_ups": completed_follow_ups,
-            "total_calls": total_calls,
-            "todays_calls": self._calls.count_since(workspace_id, _iso(today_start)),
-            "unread_notifications": unread_notifications,
-        }
-        summary.update(self._period_analytics(workspace_id, range_key, now))
-        return summary
-
-    # ---- Phase 17 — period analytics ----
-
-    def _period_analytics(self, workspace_id: UUID, range_key: str, now: datetime) -> dict[str, Any]:
         since, until = _range_bounds(range_key, now)
         since_iso, until_iso = _iso_or_none(since), _iso_or_none(until)
 
-        _, leads_created = self._leads.list_for_workspace(workspace_id, created_from=since, limit=1)
-        converted = self._leads.count_converted(workspace_id, since=since_iso, until=until_iso)
-        conversion_rate = (converted / leads_created) if leads_created > 0 else 0.0
-
-        calls_connected = self._calls.count_filtered(
-            workspace_id, since=since_iso, until=until_iso, states=["CONNECTED", "ENDED"]
+        # Step 1: the few lookups the counts below depend on.
+        recipient_member_id, statuses, members = _run_all(
+            [
+                lambda: self._current_member_id(workspace_id),
+                lambda: self._statuses.list_for_workspace(workspace_id),
+                lambda: self._members.list_active(workspace_id),
+            ]
         )
-        calls_completed = self._calls.count_filtered(workspace_id, since=since_iso, until=until_iso, states=["ENDED"])
+        default_status = next((st for st in statuses if st.get("is_default")), None)
 
-        completed_follow_ups_in_range = self._follow_ups.count_completed(workspace_id, since=since_iso, until=until_iso)
+        # Step 2: every count, side by side. Run one after another, each waiting on a network round
+        # trip to Supabase, they took seconds; together they take about as long as the slowest few.
+        fixed = [
+            lambda: self._leads.list_for_workspace(workspace_id, limit=1)[1],  # 0 total_active_leads
+            lambda: self._leads.list_for_workspace(workspace_id, is_customer=True, limit=1)[1],  # 1 customers
+            lambda: self._follow_ups.list_for_workspace(workspace_id, status="pending", limit=1)[1],  # 2
+            lambda: self._follow_ups.list_for_workspace(workspace_id, status="completed", limit=1)[1],  # 3
+            lambda: self._calls.list_for_workspace(workspace_id, limit=1)[1],  # 4 total_calls
+            lambda: self._notifications.list_for_workspace(
+                workspace_id, recipient_member_id, is_read=False, limit=1
+            )[1],  # 5 unread_notifications
+            # No default lead status configured (an admin never set one): "new leads" has nothing
+            # to count against rather than guessing a fallback definition.
+            (lambda: self._leads.list_for_workspace(workspace_id, status_id=default_status["id"], limit=1)[1])
+            if default_status
+            else (lambda: 0),  # 6 new_leads
+            lambda: self._follow_ups.count_overdue(workspace_id, _iso(now)),  # 7
+            lambda: self._calls.count_since(workspace_id, _iso(today_start)),  # 8 todays_calls
+            # Period analytics (Phase 17)
+            lambda: self._leads.list_for_workspace(workspace_id, created_from=since, limit=1)[1],  # 9
+            lambda: self._leads.count_converted(workspace_id, since=since_iso, until=until_iso),  # 10
+            lambda: self._calls.count_filtered(
+                workspace_id, since=since_iso, until=until_iso, states=["CONNECTED", "ENDED"]
+            ),  # 11
+            lambda: self._calls.count_filtered(workspace_id, since=since_iso, until=until_iso, states=["ENDED"]),  # 12
+            lambda: self._follow_ups.count_completed(workspace_id, since=since_iso, until=until_iso),  # 13
+        ]
+        per_status = [
+            (lambda st=st: self._leads.list_for_workspace(
+                workspace_id, status_id=st["id"], created_from=since, limit=1
+            )[1])
+            for st in statuses
+        ]
+        per_member = []
+        for member in members:
+            member_id = member["id"]
+            per_member += [
+                (lambda mid=member_id: self._leads.list_for_workspace(
+                    workspace_id, assigned_member_id=mid, created_from=since, limit=1
+                )[1]),
+                (lambda mid=member_id: self._calls.count_filtered(
+                    workspace_id, agent_member_id=mid, since=since_iso, until=until_iso
+                )),
+                (lambda mid=member_id: self._follow_ups.count_completed(
+                    workspace_id, assigned_member_id=mid, since=since_iso, until=until_iso
+                )),
+            ]
+        results = _run_all(fixed + per_status + per_member)
+        fixed_results = results[: len(fixed)]
+        status_counts = results[len(fixed) : len(fixed) + len(per_status)]
+        member_counts = results[len(fixed) + len(per_status) :]
 
+        leads_created, converted = fixed_results[9], fixed_results[10]
         return {
+            "total_active_leads": fixed_results[0],
+            "new_leads": fixed_results[6],
+            "customers": fixed_results[1],
+            "pending_follow_ups": fixed_results[2],
+            "overdue_follow_ups": fixed_results[7],
+            "completed_follow_ups": fixed_results[3],
+            "total_calls": fixed_results[4],
+            "todays_calls": fixed_results[8],
+            "unread_notifications": fixed_results[5],
             "range": range_key,
             "leads_created_in_range": leads_created,
             "converted_leads_in_range": converted,
-            "conversion_rate": conversion_rate,
-            "calls_connected_in_range": calls_connected,
-            "calls_completed_in_range": calls_completed,
-            "completed_follow_ups_in_range": completed_follow_ups_in_range,
-            "leads_by_status": self._leads_by_status(workspace_id, since),
-            "team_productivity": self._team_productivity(workspace_id, since, since_iso, until_iso),
+            "conversion_rate": (converted / leads_created) if leads_created > 0 else 0.0,
+            "calls_connected_in_range": fixed_results[11],
+            "calls_completed_in_range": fixed_results[12],
+            "completed_follow_ups_in_range": fixed_results[13],
+            # Pipeline distribution: of the leads created in the window, how many sit in each stage.
+            "leads_by_status": [{"status": st, "count": c} for st, c in zip(statuses, status_counts)],
+            "team_productivity": self._productivity_rows(members, member_counts),
         }
 
-    def _leads_by_status(self, workspace_id: UUID, since: datetime | None) -> list[dict[str, Any]]:
-        """Pipeline distribution (Phase 17 §"Pipeline metrics") — one
-        bounded count query per workspace status, exactly
-        `LeadService.list_pipeline`'s own established shape ("there are
-        only ever a handful of statuses per workspace" — that method's
-        docstring), just a count instead of a page of lead cards. When
-        `since` is set, this reads as "of the leads *created* in this
-        window, how many are currently in each stage" — a deliberate,
-        documented interpretation (§"Known limitations": it is not a
-        historical snapshot of where those leads stood at the time,
-        Postgres has no such history to query)."""
-        statuses = self._statuses.list_for_workspace(workspace_id)
-        result = []
-        for status in statuses:
-            _, count = self._leads.list_for_workspace(workspace_id, status_id=status["id"], created_from=since, limit=1)
-            result.append({"status": status, "count": count})
-        return result
-
-    def _team_productivity(
-        self, workspace_id: UUID, since: datetime | None, since_iso: str | None, until_iso: str | None
-    ) -> list[dict[str, Any]]:
-        """Per-member productivity (Phase 17 §"Team productivity") — one
-        bounded set of count queries per *active member* (typically a
-        handful to a few dozen per workspace, never scaling with
-        lead/call/follow-up volume — the same "small, known cardinality"
-        reasoning `_leads_by_status`/`list_pipeline` already rely on for
-        looping per-status instead of per-row).
-
-        No manager-only gate here: `leads.list_for_workspace`/
-        `calls.count_filtered`/`follow_ups.count_completed` all run
-        through this request's own RLS-scoped client, and
-        leads_select/calls_select/follow_ups_select
-        (000014_rls_policies.sql) already restrict a team_mate's own
-        query to rows they're assigned/created — so a team_mate's counts
-        for every OTHER member come back zero automatically, never a
-        leaked real number. Filtering those all-zero rows out below
-        turns that into "a team_mate's table only ever shows their own
-        row", which is the correct, minimal-surprise behavior without
-        this method ever branching on role."""
-        members = self._members.list_active(workspace_id)
+    @staticmethod
+    def _productivity_rows(members: list[dict[str, Any]], counts: list[int]) -> list[dict[str, Any]]:
+        """Per-member productivity (Phase 17). No manager-only gate here: every count ran through
+        this request's own RLS-scoped client, so a team_mate's counts for every OTHER member come
+        back zero automatically; dropping all-zero rows turns that into "a team_mate only ever sees
+        their own row" without this code ever branching on role."""
         rows: list[dict[str, Any]] = []
-        for member in members:
-            member_id = member["id"]
-            _, leads_count = self._leads.list_for_workspace(
-                workspace_id, assigned_member_id=member_id, created_from=since, limit=1
-            )
-            calls_count = self._calls.count_filtered(
-                workspace_id, agent_member_id=member_id, since=since_iso, until=until_iso
-            )
-            completed_follow_ups_count = self._follow_ups.count_completed(
-                workspace_id, assigned_member_id=member_id, since=since_iso, until=until_iso
-            )
-            if leads_count == 0 and calls_count == 0 and completed_follow_ups_count == 0:
+        for i, member in enumerate(members):
+            leads_count, calls_count, completed_count = counts[i * 3 : i * 3 + 3]
+            if leads_count == 0 and calls_count == 0 and completed_count == 0:
                 continue
             rows.append(
                 {
-                    "member": {"id": member_id, "full_name": member.get("full_name")},
+                    "member": {"id": member["id"], "full_name": member.get("full_name")},
                     "leads_count": leads_count,
                     "calls_count": calls_count,
-                    "completed_follow_ups_count": completed_follow_ups_count,
+                    "completed_follow_ups_count": completed_count,
                 }
             )
         return rows
@@ -253,12 +247,27 @@ class DashboardService:
         recipient_member_id = self._current_member_id(workspace_id)
         window = offset + limit
 
-        calls, calls_total = self._calls.list_for_workspace(workspace_id, limit=window, offset=0)
-        follow_ups = self._follow_ups.list_recent_for_workspace(workspace_id, limit=window)
-        interactions = self._interactions.list_recent_for_workspace(workspace_id, limit=window)
-        allocations = self._allocations.list_recent_for_workspace(workspace_id, limit=window)
-        notifications, notifications_total = self._notifications.list_for_workspace(
-            workspace_id, recipient_member_id, limit=window, offset=0
+        # Nine independent reads: side by side instead of one after another.
+        (
+            (calls, calls_total),
+            follow_ups,
+            interactions,
+            allocations,
+            (notifications, notifications_total),
+            (_, follow_ups_total),
+            interactions_total,
+            allocations_total,
+        ) = _run_all(
+            [
+                lambda: self._calls.list_for_workspace(workspace_id, limit=window, offset=0),
+                lambda: self._follow_ups.list_recent_for_workspace(workspace_id, limit=window),
+                lambda: self._interactions.list_recent_for_workspace(workspace_id, limit=window),
+                lambda: self._allocations.list_recent_for_workspace(workspace_id, limit=window),
+                lambda: self._notifications.list_for_workspace(workspace_id, recipient_member_id, limit=window, offset=0),
+                lambda: self._follow_ups.list_for_workspace(workspace_id, limit=1),
+                lambda: self._interactions.count_for_workspace(workspace_id),
+                lambda: self._allocations.count_for_workspace(workspace_id),
+            ]
         )
 
         # follow_ups/interactions/allocations don't have their own
@@ -268,9 +277,6 @@ class DashboardService:
         # the existing `list_for_workspace(limit=1)` trick for follow-ups'
         # total, and the count_for_workspace() added alongside
         # list_recent_for_workspace for interactions/allocations.
-        _, follow_ups_total = self._follow_ups.list_for_workspace(workspace_id, limit=1)
-        interactions_total = self._interactions.count_for_workspace(workspace_id)
-        allocations_total = self._allocations.count_for_workspace(workspace_id)
 
         total = calls_total + follow_ups_total + interactions_total + allocations_total + notifications_total
 

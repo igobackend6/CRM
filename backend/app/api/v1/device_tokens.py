@@ -17,7 +17,7 @@ router = APIRouter(tags=["device-tokens"])
 
 
 @router.put("/device-tokens", status_code=204)
-async def register_device_token(
+def register_device_token(
     body: DeviceTokenRegister,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     client: Annotated[Client, Depends(get_user_client)],
@@ -29,7 +29,7 @@ async def register_device_token(
 
 
 @router.delete("/device-tokens/{token}", status_code=204)
-async def deregister_device_token(
+def deregister_device_token(
     token: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     client: Annotated[Client, Depends(get_user_client)],

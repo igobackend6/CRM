@@ -43,13 +43,14 @@ def get_user_client(user: Annotated[AuthenticatedUser, Depends(get_current_user)
 def require_workspace_member(
     workspace_id: UUID,
     client: Annotated[Client, Depends(get_user_client)],
+    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ) -> Client:
     """Route dependency: 403s unless the current user is an active
     member of :workspace_id (taken from the route's path parameter of
     the same name). Returns the user-scoped client so the route can
     reuse it for its own queries without asking twice.
     """
-    authz.require_workspace_member(client, workspace_id)
+    authz.require_workspace_member_cached(client, str(user.id), workspace_id)
     return client
 
 
@@ -65,8 +66,9 @@ def require_permission(permission: Permission):
     def dependency(
         workspace_id: UUID,
         client: Annotated[Client, Depends(get_user_client)],
+        user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     ) -> Client:
-        authz.require_permission(client, workspace_id, permission)
+        authz.require_permission_cached(client, str(user.id), workspace_id, permission)
         return client
 
     return dependency

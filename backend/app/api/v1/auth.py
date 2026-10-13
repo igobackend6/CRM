@@ -9,7 +9,7 @@ router = APIRouter(tags=["auth"])
 
 
 @router.get("/me")
-async def read_current_user(
+def read_current_user(
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ) -> dict:
     """Identity/session verification endpoint — not a CRM feature. Its

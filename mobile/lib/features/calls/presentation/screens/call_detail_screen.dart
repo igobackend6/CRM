@@ -63,7 +63,8 @@ class CallDetailScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(call.lead.name, style: theme.textTheme.headlineSmall),
+                        Text(call.displayName, style: theme.textTheme.headlineSmall),
+                        if (call.formattedNumber != null) Text(call.formattedNumber!, style: theme.textTheme.bodyMedium),
                         if (call.outcome != null) ...[
                           const SizedBox(height: AppSpacing.xs),
                           AppStatusChip.forCallOutcome(name: call.outcome!.name, isPositive: call.outcome!.isPositive),
@@ -75,11 +76,19 @@ class CallDetailScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            TextButton.icon(
-              icon: const Icon(Icons.person_search_outlined, size: 18),
-              label: const Text('View lead'),
-              onPressed: () => context.push(RoutePaths.leadDetail(call.lead.id)),
-            ),
+            if (call.lead case final lead?)
+              TextButton.icon(
+                icon: const Icon(Icons.person_search_outlined, size: 18),
+                label: const Text('View lead'),
+                onPressed: () => context.push(RoutePaths.leadDetail(lead.id)),
+              )
+            else if (call.phoneKey case final key?)
+              TextButton.icon(
+                key: const Key('call-detail-number-page'),
+                icon: const Icon(Icons.info_outline, size: 18),
+                label: const Text('Call logs for this number'),
+                onPressed: () => context.push(RoutePaths.callNumber(key)),
+              ),
             const SizedBox(height: AppSpacing.sm),
             DetailInfoRow(label: 'Direction', value: call.direction),
             DetailInfoRow(label: 'Status', value: call.state),

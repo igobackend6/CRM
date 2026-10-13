@@ -24,20 +24,24 @@ def _service(client: Client) -> CallService:
 
 
 @router.get("/workspaces/{workspace_id}/calls", response_model=CallListResponse)
-async def list_calls(
+def list_calls(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.CALLS_READ))],
     lead_id: UUID | None = Query(default=None),
     direction: str | None = Query(default=None),
+    # The last 10 digits of a number: every call to/from it (the app's per-number call history).
+    phone: str | None = Query(default=None, pattern=r"^\d{10}$"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> CallListResponse:
-    items, total = _service(client).list_calls(workspace_id, lead_id=lead_id, direction=direction, limit=limit, offset=offset)
+    items, total = _service(client).list_calls(
+        workspace_id, lead_id=lead_id, direction=direction, phone_key=phone, limit=limit, offset=offset
+    )
     return CallListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/workspaces/{workspace_id}/calls/{call_id}", response_model=CallOut)
-async def get_call(
+def get_call(
     workspace_id: UUID,
     call_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.CALLS_READ))],
@@ -46,7 +50,7 @@ async def get_call(
 
 
 @router.post("/workspaces/{workspace_id}/calls", response_model=CallOut, status_code=201)
-async def create_call(
+def create_call(
     workspace_id: UUID,
     body: CallCreate,
     client: Annotated[Client, Depends(require_permission(Permission.CALLS_CREATE))],
@@ -60,7 +64,7 @@ async def create_call(
 
 
 @router.get("/workspaces/{workspace_id}/call-outcomes", response_model=list[CallOutcomeOut])
-async def list_call_outcomes(
+def list_call_outcomes(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[CallOutcomeOut]:

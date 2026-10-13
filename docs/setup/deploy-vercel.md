@@ -15,7 +15,7 @@ Nothing in the app code changes; local running (`uvicorn app.main:app`) is uncha
    `ENVIRONMENT=production`, `LOG_LEVEL=INFO`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
    `SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET` (same values as `backend/.env`).
    The service-role key lives only here, never in the app or Git.
-5. Settings > Functions > set the **Region** closest to your Supabase project.
+5. **Region:** `backend/vercel.json` pins the functions to Singapore (`sin1`), next to the Supabase project (ap-southeast-1). Vercel's default is the US East coast, which put every database query (15-35 per screen) a world away and made screens take 30-60 s. Check the deployment's Functions tab shows Singapore.
 6. **Deploy.** Open `https://<your-project>.vercel.app/health` -> `{"status":"ok"}`.
    (With `ENVIRONMENT=production`, `/docs` and `/openapi.json` are off by design.)
 7. Put the address in the app and rebuild the APK:

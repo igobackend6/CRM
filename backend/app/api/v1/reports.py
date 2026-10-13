@@ -32,7 +32,7 @@ def _service(client: Client) -> ReportService:
 
 
 @router.get("/workspaces/{workspace_id}/reports/personal", response_model=PersonalReportOut)
-async def get_personal_report(
+def get_personal_report(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     range: str = Query(default="all_time", pattern=_RANGE_PATTERN),
@@ -48,7 +48,7 @@ async def get_personal_report(
 
 
 @router.get("/workspaces/{workspace_id}/reports/call-trends", response_model=CallTrendsOut)
-async def get_call_trends(
+def get_call_trends(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     since: datetime = Query(...),
@@ -68,7 +68,7 @@ async def get_call_trends(
 
 
 @router.get("/workspaces/{workspace_id}/reports/team", response_model=TeamReportOut)
-async def get_team_report(
+def get_team_report(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.REPORTS_READ))],
     range: str = Query(default="all_time", pattern=_RANGE_PATTERN),
@@ -85,7 +85,7 @@ async def get_team_report(
 
 
 @router.get("/workspaces/{workspace_id}/reports/pipeline", response_model=PipelineReportOut)
-async def get_pipeline_report(
+def get_pipeline_report(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.REPORTS_READ))],
     range: str = Query(default="all_time", pattern=_RANGE_PATTERN),

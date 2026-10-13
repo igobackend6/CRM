@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../call_outcome/domain/outcome_fields.dart';
+import '../../../custom_fields/domain/entities/custom_field.dart';
+import '../../../custom_fields/presentation/providers/custom_field_providers.dart';
+import '../../../call_outcome/presentation/widgets/interested_in_row.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -108,7 +112,8 @@ class LeadDetailScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             DetailInfoRow(label: 'Phone', value: lead.phone ?? '—'),
             DetailInfoRow(label: 'Email', value: lead.email ?? '—'),
-            DetailInfoRow(label: 'Status', value: lead.status?.name ?? '—'),
+            CustomFieldRows(customFields: lead.customFields),
+            BuiltInStatusRow(name: lead.status?.name),
             DetailInfoRow(label: 'Source', value: lead.source?.name ?? '—'),
             DetailInfoRow(label: 'Priority', value: lead.priority),
             _AssignmentRow(leadId: leadId, lead: lead),
@@ -160,14 +165,19 @@ class LeadDetailScreen extends ConsumerWidget {
 /// upgraded to the real "Call Summary"-card pattern —
 /// docs/design/design-tokens.md). Still renders `lead.name` exactly
 /// once, same as before (existing tests assert on that).
-class _LeadHeaderCard extends StatelessWidget {
+class _LeadHeaderCard extends ConsumerWidget {
   const _LeadHeaderCard({required this.lead});
 
   final Lead lead;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final status = lead.status;
+    // When the admin has a Status field (the after-call pop-up's), that is the one status shown; the
+    // built-in pipeline status is only used while the workspace has no such field.
+    final adminFields = ref.watch(workspaceCustomFieldsProvider).valueOrNull ?? const <CustomField>[];
+    final adminStatus = adminFields.where((f) => f.code == 'status').firstOrNull;
+    final adminStatusText = adminStatus == null ? null : customFieldDisplay(adminStatus, lead.customFields['status']);
     final accentColor = status == null
         ? null
         : (status.isWon ? AppColors.success : (status.isLost ? Theme.of(context).colorScheme.error : null));
@@ -188,10 +198,22 @@ class _LeadHeaderCard extends StatelessWidget {
                     LeadContactActions(phone: lead.phone, leadId: lead.id, leadName: lead.name, isCustomer: lead.isCustomer),
                   ],
                 ),
-                if (status != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  AppStatusChip.forLeadStatus(name: status.name, stage: status.stage),
-                ],
+                const SizedBox(height: AppSpacing.xs),
+                // The status, and next to it the project the lead is interested in (green).
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (adminStatus != null)
+                      (adminStatusText == null
+                          ? const SizedBox.shrink()
+                          : AppStatusChip(key: const Key('lead-admin-status-chip'), label: adminStatusText, tone: ChipTone.positive))
+                    else if (status != null)
+                      AppStatusChip.forLeadStatus(name: status.name, stage: status.stage),
+                    InterestedInChip(customFields: lead.customFields),
+                  ],
+                ),
               ],
             ),
           ),

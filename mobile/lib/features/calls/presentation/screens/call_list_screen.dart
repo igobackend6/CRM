@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../call_sync/domain/call_recording.dart';
@@ -28,9 +29,12 @@ String formatCallDateTime(DateTime date) {
 /// Detail's "View all calls" (§6) pushes this screen with a leadId
 /// rather than opening a second list implementation.
 class CallListScreen extends ConsumerStatefulWidget {
-  const CallListScreen({super.key, this.leadId});
+  const CallListScreen({super.key, this.leadId, this.phone});
 
   final String? leadId;
+
+  /// The last 10 digits of a number: only calls to/from it (a number's "Call logs" page).
+  final String? phone;
 
   @override
   ConsumerState<CallListScreen> createState() => _CallListScreenState();
@@ -60,17 +64,22 @@ class _CallListScreenState extends ConsumerState<CallListScreen> {
     super.dispose();
   }
 
-  CallListController get _notifier => widget.leadId == null
-      ? ref.read(callListControllerProvider.notifier)
-      : ref.read(leadCallListControllerProvider(widget.leadId!).notifier);
+  CallListController get _notifier => widget.phone != null
+      ? ref.read(phoneCallListControllerProvider(widget.phone!).notifier)
+      : widget.leadId == null
+          ? ref.read(callListControllerProvider.notifier)
+          : ref.read(leadCallListControllerProvider(widget.leadId!).notifier);
 
   @override
   Widget build(BuildContext context) {
-    final state =
-        widget.leadId == null ? ref.watch(callListControllerProvider) : ref.watch(leadCallListControllerProvider(widget.leadId!));
+    final state = widget.phone != null
+        ? ref.watch(phoneCallListControllerProvider(widget.phone!))
+        : widget.leadId == null
+            ? ref.watch(callListControllerProvider)
+            : ref.watch(leadCallListControllerProvider(widget.leadId!));
 
     return Scaffold(
-      appBar: brandAppBar(title: const Text('Calls')),
+      appBar: brandAppBar(title: Text(widget.phone != null ? 'Call logs' : 'Calls')),
       body: Column(
         children: [
           _FilterBar(
@@ -133,7 +142,13 @@ class _CallListScreenState extends ConsumerState<CallListScreen> {
                 );
               }
               final call = items[index];
-              return CallTile(call: call, showLeadName: widget.leadId == null, recording: recordings[call.id]);
+              return CallTile(
+                call: call,
+                showLeadName: widget.leadId == null,
+                recording: recordings[call.id],
+                // Already on this number's own call logs: its info icon would open the page we came from.
+                showInfo: widget.phone == null,
+              );
             },
           ),
         );
@@ -183,10 +198,13 @@ enum CallFilter {
 }
 
 class CallTile extends StatelessWidget {
-  const CallTile({super.key, required this.call, this.showLeadName = true, this.recording});
+  const CallTile({super.key, required this.call, this.showLeadName = true, this.recording, this.showInfo = true});
 
   final Call call;
   final bool showLeadName;
+
+  /// The (i) icon that opens the number's page. Hidden on lead-scoped lists and a number's own list.
+  final bool showInfo;
 
   /// The call's recording, when it has one: a play button is shown.
   final CallRecording? recording;
@@ -194,6 +212,11 @@ class CallTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Like the phone's own call log: a call nobody picked up (incoming) is red.
+    final missed = call.isMissedIncoming;
+    final accent = missed ? theme.colorScheme.error : theme.colorScheme.secondary;
+    final number = showLeadName ? call.formattedNumber : null;
+    final phoneKey = call.phoneKey;
     return InkWell(
       onTap: () => context.push(RoutePaths.callDetail(call.id)),
       child: Padding(
@@ -205,16 +228,39 @@ class CallTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.12),
-                  child: Icon(call.isInbound ? Icons.call_received : Icons.call_made, size: 16, color: theme.colorScheme.secondary),
+                  backgroundColor: accent.withValues(alpha: 0.12),
+                  child: Icon(call.isInbound ? Icons.call_received : Icons.call_made, size: 16, color: accent),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(showLeadName ? call.lead.name : call.direction, style: theme.textTheme.titleMedium)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        showLeadName ? call.displayName : (call.isInbound ? 'Incoming' : 'Outgoing'),
+                        key: Key('call-name-${call.id}'),
+                        style: theme.textTheme.titleMedium?.copyWith(color: missed ? accent : null),
+                      ),
+                      // The number under the name, as the phone's own log shows it (not repeated when the
+                      // name is the number itself).
+                      if (number != null && number != call.displayName)
+                        Text(number, key: Key('call-number-${call.id}'), style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textDim)),
+                    ],
+                  ),
+                ),
                 if (call.outcome != null)
                   AppStatusChip.forCallOutcome(name: call.outcome!.name, isPositive: call.outcome!.isPositive)
                 else if (_unansweredLabel(call) case final label?)
                   AppStatusChip(label: label, tone: ChipTone.warning),
                 if (recording != null) CallRecordingPlayButton(recording: recording!),
+                if (showInfo && phoneKey != null)
+                  IconButton(
+                    key: Key('call-info-${call.id}'),
+                    tooltip: 'Call logs for this number',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.info_outline),
+                    onPressed: () => context.push(RoutePaths.callNumber(phoneKey)),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.xs),

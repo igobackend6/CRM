@@ -23,7 +23,7 @@ def _service(client: Client) -> ActivityService:
 
 
 @router.post("/workspaces/{workspace_id}/activity/heartbeat", response_model=ActivityStatusOut)
-async def heartbeat(
+def heartbeat(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     body: Annotated[ActivityReportIn, Body()] = ActivityReportIn(),
@@ -34,7 +34,7 @@ async def heartbeat(
 
 
 @router.post("/workspaces/{workspace_id}/activity/sign-out", response_model=ActivityStatusOut)
-async def sign_out(
+def sign_out(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     body: Annotated[ActivityReportIn, Body()] = ActivityReportIn(),
@@ -43,7 +43,7 @@ async def sign_out(
 
 
 @router.post("/workspaces/{workspace_id}/activity/break/start", response_model=ActivityStatusOut)
-async def start_break(
+def start_break(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     body: Annotated[ActivityReportIn, Body()] = ActivityReportIn(),
@@ -52,7 +52,7 @@ async def start_break(
 
 
 @router.post("/workspaces/{workspace_id}/activity/break/end", response_model=ActivityStatusOut)
-async def end_break(
+def end_break(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     body: Annotated[ActivityReportIn, Body()] = ActivityReportIn(),
@@ -61,7 +61,7 @@ async def end_break(
 
 
 @router.get("/workspaces/{workspace_id}/activity/summary", response_model=ActivitySummaryOut)
-async def get_summary(
+def get_summary(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     since: datetime = Query(...),
@@ -73,7 +73,7 @@ async def get_summary(
 
 
 @router.get("/workspaces/{workspace_id}/activity/daily", response_model=list[DailyActivityOut])
-async def list_daily(
+def list_daily(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
     since: date = Query(...),

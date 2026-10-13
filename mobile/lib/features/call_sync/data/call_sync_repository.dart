@@ -281,7 +281,9 @@ class CallSyncRepository {
     final calls = <SyncedDeviceCall>[];
     for (final s in synced) {
       final call = byKey[s.key];
-      if (call != null) calls.add(SyncedDeviceCall(callId: s.callId, leadId: s.leadId, call: call));
+      // Call-back reminders are about leads; a call from an unknown number has none.
+      final leadId = s.leadId;
+      if (call != null && leadId != null) calls.add(SyncedDeviceCall(callId: s.callId, leadId: leadId, call: call));
     }
     final plan = planCallBacks(calls: calls, sinceMillis: progress.neverAttendedSince, handled: progress.handledUnattended);
     final handled = {...progress.handledUnattended, ...plan.consideredCallIds};

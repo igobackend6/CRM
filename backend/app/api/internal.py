@@ -24,7 +24,7 @@ def _require_secret(secret: str | None) -> None:
 
 
 @router.post("/push/notification", status_code=202)
-async def dispatch_push_for_notification(
+def dispatch_push_for_notification(
     payload: dict[str, Any],
     x_webhook_secret: Annotated[str | None, Header()] = None,
 ) -> dict[str, str]:

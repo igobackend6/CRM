@@ -8,12 +8,16 @@ class DeviceCall {
     required this.dateMillis,
     required this.durationSeconds,
     this.number,
+    this.name,
     this.subscriptionId,
   });
 
   /// CallLog.Calls._ID — stable for this call on this phone.
   final int id;
   final String? number;
+
+  /// The name the phone has saved for the number (its contacts), when it has one.
+  final String? name;
 
   /// CallLog.Calls.TYPE (see [typeIncoming] ...).
   final int type;
@@ -82,6 +86,7 @@ class DeviceCall {
       'state': kind.state,
       'started_at': startedAt.toUtc().toIso8601String(),
       'duration_seconds': durationSeconds,
+      if (name != null && name!.trim().isNotEmpty) 'name': name!.trim(),
     };
   }
 
@@ -100,6 +105,7 @@ class DeviceCall {
       dateMillis: date,
       durationSeconds: duration is int && duration > 0 ? duration : 0,
       number: number is String ? number : null,
+      name: raw['name'] is String ? raw['name'] as String : null,
       subscriptionId: sub is int ? sub : null,
     );
   }

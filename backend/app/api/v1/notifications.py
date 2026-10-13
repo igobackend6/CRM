@@ -27,7 +27,7 @@ def _service(client: Client) -> NotificationService:
 
 
 @router.get("/workspaces/{workspace_id}/notifications", response_model=NotificationListResponse)
-async def list_notifications(
+def list_notifications(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.NOTIFICATIONS_READ))],
     is_read: bool | None = Query(default=None),
@@ -39,7 +39,7 @@ async def list_notifications(
 
 
 @router.get("/workspaces/{workspace_id}/notifications/{notification_id}", response_model=NotificationOut)
-async def get_notification(
+def get_notification(
     workspace_id: UUID,
     notification_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.NOTIFICATIONS_READ))],
@@ -48,7 +48,7 @@ async def get_notification(
 
 
 @router.patch("/workspaces/{workspace_id}/notifications/{notification_id}", response_model=NotificationOut)
-async def mark_notification_read(
+def mark_notification_read(
     workspace_id: UUID,
     notification_id: UUID,
     body: NotificationMarkReadUpdate,
@@ -63,7 +63,7 @@ async def mark_notification_read(
 
 
 @router.post("/workspaces/{workspace_id}/notifications/mark-all-read")
-async def mark_all_notifications_read(
+def mark_all_notifications_read(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.NOTIFICATIONS_READ))],
 ) -> dict:

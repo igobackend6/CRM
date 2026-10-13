@@ -32,7 +32,7 @@ def _service(client: Client) -> DocumentService:
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/documents", response_model=DocumentListResponse)
-async def list_lead_documents(
+def list_lead_documents(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.DOCUMENTS_READ))],
@@ -70,7 +70,7 @@ async def upload_lead_document(
     "/workspaces/{workspace_id}/leads/{lead_id}/documents/{document_id}/signed-url",
     response_model=SignedUrlResponse,
 )
-async def get_lead_document_signed_url(
+def get_lead_document_signed_url(
     workspace_id: UUID,
     lead_id: UUID,
     document_id: UUID,
@@ -85,7 +85,7 @@ async def get_lead_document_signed_url(
 
 
 @router.delete("/workspaces/{workspace_id}/leads/{lead_id}/documents/{document_id}", status_code=204)
-async def delete_lead_document(
+def delete_lead_document(
     workspace_id: UUID,
     lead_id: UUID,
     document_id: UUID,

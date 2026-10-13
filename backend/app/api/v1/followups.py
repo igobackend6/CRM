@@ -22,7 +22,7 @@ def _service(client: Client) -> FollowUpService:
 
 
 @router.get("/workspaces/{workspace_id}/follow-ups", response_model=FollowUpListResponse)
-async def list_follow_ups(
+def list_follow_ups(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.FOLLOWUPS_READ))],
     lead_id: UUID | None = Query(default=None),
@@ -35,7 +35,7 @@ async def list_follow_ups(
 
 
 @router.get("/workspaces/{workspace_id}/follow-ups/{follow_up_id}", response_model=FollowUpOut)
-async def get_follow_up(
+def get_follow_up(
     workspace_id: UUID,
     follow_up_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.FOLLOWUPS_READ))],
@@ -44,7 +44,7 @@ async def get_follow_up(
 
 
 @router.post("/workspaces/{workspace_id}/follow-ups", response_model=FollowUpOut, status_code=201)
-async def create_follow_up(
+def create_follow_up(
     workspace_id: UUID,
     body: FollowUpCreate,
     client: Annotated[Client, Depends(require_permission(Permission.FOLLOWUPS_CREATE))],
@@ -53,7 +53,7 @@ async def create_follow_up(
 
 
 @router.patch("/workspaces/{workspace_id}/follow-ups/{follow_up_id}", response_model=FollowUpOut)
-async def update_follow_up(
+def update_follow_up(
     workspace_id: UUID,
     follow_up_id: UUID,
     body: FollowUpUpdate,

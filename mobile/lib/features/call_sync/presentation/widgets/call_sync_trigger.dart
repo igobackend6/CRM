@@ -9,6 +9,8 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../workspace/presentation/providers/workspace_providers.dart';
 import '../../../dialer/domain/native_dialer_models.dart';
 import '../../../dialer/presentation/providers/native_dialer_providers.dart';
+import '../../../calls/presentation/providers/call_providers.dart' show callListControllerProvider;
+import '../../../dashboard/presentation/providers/dashboard_providers.dart';
 import '../providers/call_sync_providers.dart';
 
 /// Keeps call history syncing on its own while the app is in use: when the app opens, each time
@@ -106,6 +108,21 @@ class _CallSyncTriggerState extends ConsumerState<CallSyncTrigger> with WidgetsB
   Widget build(BuildContext context) {
     // Sign-in / workspace changes rebuild the controller; run once for the new one.
     ref.listen(callSyncControllerProvider.notifier, (_, _) => _run());
+    // New calls were just synced: Home's numbers, pipeline, follow-ups and call list and the Calls page
+    // are re-read, so what they show matches the phone without reopening the app.
+    ref.listen(callSyncControllerProvider.select((s) => s.syncing), (was, now) {
+      if (was == true && now == false) refreshHomeData(ref.invalidate);
+    });
     return widget.child;
   }
+}
+
+/// Re-reads everything Home and the Calls page show (Overview, Analytics, Pipeline distribution,
+/// Follow-ups, recent Calls, Activity). Called after calls sync and after the after-call pop-up saves.
+void refreshHomeData(void Function(ProviderOrFamily) invalidate) {
+  invalidate(dashboardSummaryProvider);
+  invalidate(dashboardPendingFollowUpsProvider);
+  invalidate(dashboardRecentCallsProvider);
+  invalidate(activityListControllerProvider);
+  invalidate(callListControllerProvider);
 }

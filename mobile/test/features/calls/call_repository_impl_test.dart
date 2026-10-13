@@ -36,7 +36,7 @@ void main() {
       final page = await repo.listCalls(accessToken: 't', workspaceId: 'w1', offset: 0);
 
       expect(page.items, hasLength(1));
-      expect(page.items.first.lead.name, 'Acme Corp');
+      expect(page.items.first.lead?.name, 'Acme Corp');
       expect(page.total, 1);
     });
 

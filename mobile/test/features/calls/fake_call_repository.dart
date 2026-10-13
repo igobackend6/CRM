@@ -17,11 +17,16 @@ Call testCall({
   int? durationSeconds,
   String? notes,
   MemberSummary? agentMember,
+  bool noLead = false,
+  String? contactName,
+  String? phoneNumber,
 }) =>
     Call(
       id: id,
       workspaceId: 'w1',
-      lead: LeadSummary(id: leadId, name: leadName),
+      lead: noLead ? null : LeadSummary(id: leadId, name: leadName),
+      contactName: contactName,
+      phoneNumber: phoneNumber,
       agentMember: agentMember ?? const MemberSummary(id: 'm1', fullName: 'Agent One'),
       direction: direction,
       state: state,
@@ -49,6 +54,7 @@ class FakeCallRepository implements CallRepository {
 
   int? lastOffset;
   String? lastListLeadId;
+  String? lastListPhone;
   String? lastCreateLeadId;
   CallDraft? lastCreateDraft;
 
@@ -58,12 +64,14 @@ class FakeCallRepository implements CallRepository {
     required String workspaceId,
     String? leadId,
     String? direction,
+    String? phone,
     int limit = 20,
     int offset = 0,
   }) async {
     if (listError != null) throw listError!;
     lastOffset = offset;
     lastListLeadId = leadId;
+    lastListPhone = phone;
     return CallPage(items: itemsToReturn, total: totalToReturn, limit: limit, offset: offset);
   }
 

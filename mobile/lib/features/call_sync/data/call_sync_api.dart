@@ -6,11 +6,12 @@ import '../domain/call_recording.dart';
 
 /// A call the server accepted (new or already synced): the phone's key -> the CRM call.
 class SyncedCall {
-  const SyncedCall({required this.key, required this.callId, required this.leadId});
+  const SyncedCall({required this.key, required this.callId, this.leadId});
 
   final String key;
   final String callId;
-  final String leadId;
+  /// Null for a call to/from a number that is not a lead.
+  final String? leadId;
 }
 
 class SyncCallsResult {
@@ -102,8 +103,8 @@ class SupabaseCallSyncApi implements CallSyncApi {
     final data = await _invoke({'action': 'sync_calls', 'workspace_id': workspaceId, 'entries': entries});
     final synced = <SyncedCall>[];
     for (final row in (data['synced'] as List? ?? const [])) {
-      if (row is Map && row['key'] is String && row['call_id'] is String && row['lead_id'] is String) {
-        synced.add(SyncedCall(key: row['key'] as String, callId: row['call_id'] as String, leadId: row['lead_id'] as String));
+      if (row is Map && row['key'] is String && row['call_id'] is String) {
+        synced.add(SyncedCall(key: row['key'] as String, callId: row['call_id'] as String, leadId: row['lead_id'] as String?));
       }
     }
     int count(Object? v) => v is num ? v.toInt() : 0;

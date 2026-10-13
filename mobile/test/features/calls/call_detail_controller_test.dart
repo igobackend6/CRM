@@ -17,7 +17,7 @@ void main() {
 
       await waitUntil(() => container.read(callDetailControllerProvider('call-1')).status == CallDetailStatus.success);
 
-      expect(container.read(callDetailControllerProvider('call-1')).call?.lead.name, 'Acme Corp');
+      expect(container.read(callDetailControllerProvider('call-1')).call?.lead?.name, 'Acme Corp');
     });
 
     test('a NotFoundException lands in notFound, not error', () async {

@@ -33,6 +33,14 @@ void main() {
       });
     });
 
+    test('the name the phone has for the number goes with the entry; an empty name is left out', () {
+      final named = DeviceCall(id: 7, type: DeviceCall.typeIncoming, dateMillis: DateTime.utc(2026, 10, 1, 10).millisecondsSinceEpoch, durationSeconds: 5, number: '8072295987', name: '  Thara ');
+      expect(named.toSyncEntry('abc')!['name'], 'Thara');
+      final blank = DeviceCall(id: 8, type: DeviceCall.typeIncoming, dateMillis: DateTime.utc(2026, 10, 1, 10).millisecondsSinceEpoch, durationSeconds: 5, number: '8072295987', name: '  ');
+      expect(blank.toSyncEntry('abc')!.containsKey('name'), isFalse);
+      expect(DeviceCall.fromPlatform({'id': 1, 'type': 1, 'date': 5, 'duration': 3, 'number': '1', 'name': 'Thara'})!.name, 'Thara');
+    });
+
     test('hidden numbers and skipped types produce no entry', () {
       expect(call(number: null).toSyncEntry('abc'), isNull);
       expect(call(number: '-2').toSyncEntry('abc'), isNull);

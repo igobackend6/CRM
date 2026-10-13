@@ -66,7 +66,12 @@ class CallOut(BaseModel):
 
     id: UUID
     workspace_id: UUID
-    lead: LeadSummary
+    # None for a call from/to a number that is not a lead (migration 000034).
+    lead: LeadSummary | None = None
+    # The name shown for the call when there is no lead: the phone's saved contact name, or "Unknown".
+    contact_name: str | None = None
+    phone_number: str | None = None
+    source: str | None = None
     agent_member: MemberSummary | None = None
     direction: str
     state: str

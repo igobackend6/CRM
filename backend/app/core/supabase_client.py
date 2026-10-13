@@ -1,11 +1,24 @@
 from functools import lru_cache
 
+import httpx
 from supabase import Client, create_client
+from supabase.lib.client_options import SyncClientOptions
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+# One shared HTTP/1.1 connection pool for every Supabase call. supabase-py's default client speaks
+# HTTP/2 and multiplexes every request over a single connection; when a screen fires dozens of
+# queries at once (the dashboard does) Supabase's edge resets that connection ("Server disconnected",
+# "ConnectionTerminated PROTOCOL_ERROR") and the request fails. A pool of ordinary connections has
+# no such limit, and keep-alive still avoids a new TLS handshake per query.
+_http = httpx.Client(
+    http2=False,
+    timeout=httpx.Timeout(30.0),
+    limits=httpx.Limits(max_connections=40, max_keepalive_connections=20, keepalive_expiry=30.0),
+)
 
 
 @lru_cache
@@ -23,7 +36,9 @@ def get_supabase_client() -> Client | None:
     if not settings.supabase_url or not settings.supabase_service_role_key:
         logger.warning("Supabase credentials not configured; service-role client not initialized.")
         return None
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return create_client(
+        settings.supabase_url, settings.supabase_service_role_key, options=SyncClientOptions(httpx_client=_http)
+    )
 
 
 def get_user_scoped_client(access_token: str) -> Client:
@@ -54,7 +69,9 @@ def get_user_scoped_client(access_token: str) -> Client:
     if not settings.supabase_url or not settings.supabase_anon_key:
         raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY must be configured.")
 
-    client = create_client(settings.supabase_url, settings.supabase_anon_key)
+    client = create_client(
+        settings.supabase_url, settings.supabase_anon_key, options=SyncClientOptions(httpx_client=_http)
+    )
     client.options.headers["Authorization"] = f"Bearer {access_token}"
     client.postgrest.auth(access_token)
     return client

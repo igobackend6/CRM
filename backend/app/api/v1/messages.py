@@ -36,7 +36,7 @@ def _service(client: Client) -> MessagingService:
 
 
 @router.get("/workspaces/{workspace_id}/conversations", response_model=ConversationListResponse)
-async def list_conversations(
+def list_conversations(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
     limit: int = Query(default=20, ge=1, le=100),
@@ -47,7 +47,7 @@ async def list_conversations(
 
 
 @router.get("/workspaces/{workspace_id}/leads/{lead_id}/conversation", response_model=ConversationOut)
-async def get_lead_conversation(
+def get_lead_conversation(
     workspace_id: UUID,
     lead_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -64,7 +64,7 @@ async def get_lead_conversation(
     "/workspaces/{workspace_id}/conversations/{conversation_id}/messages",
     response_model=MessageListResponse,
 )
-async def list_messages(
+def list_messages(
     workspace_id: UUID,
     conversation_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],
@@ -80,7 +80,7 @@ async def list_messages(
     response_model=MessageOut,
     status_code=201,
 )
-async def send_message(
+def send_message(
     workspace_id: UUID,
     conversation_id: UUID,
     body: MessageCreate,
@@ -90,7 +90,7 @@ async def send_message(
 
 
 @router.post("/workspaces/{workspace_id}/conversations/{conversation_id}/read")
-async def mark_conversation_read(
+def mark_conversation_read(
     workspace_id: UUID,
     conversation_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.LEADS_READ))],

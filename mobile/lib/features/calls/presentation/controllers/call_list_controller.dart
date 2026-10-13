@@ -21,9 +21,10 @@ class CallListController extends StateNotifier<CallListState> {
   // match the private field name (`_leadId`), leaking it into every call
   // site; keeping the parameter named `leadId` and assigning it
   // explicitly is intentional.
-  CallListController(this._repository, this._ref, {String? leadId})
+  CallListController(this._repository, this._ref, {String? leadId, String? phone})
       // ignore: prefer_initializing_formals
       : _leadId = leadId,
+        _phone = phone, // ignore: prefer_initializing_formals
         super(const CallListState.initial()) {
     _ref.listen<WorkspaceState>(workspaceControllerProvider, (previous, next) {
       if (next.status == WorkspaceStatus.selected) refresh();
@@ -33,6 +34,9 @@ class CallListController extends StateNotifier<CallListState> {
   final CallRepository _repository;
   final Ref _ref;
   final String? _leadId;
+
+  /// The last 10 digits of a number: only calls to/from it (the app's per-number call history).
+  final String? _phone;
 
   Future<void> refresh() async {
     final context = resolveLeadContext(_ref.read);
@@ -46,6 +50,7 @@ class CallListController extends StateNotifier<CallListState> {
         accessToken: context.accessToken,
         workspaceId: context.workspaceId,
         leadId: _leadId,
+        phone: _phone,
         limit: state.limit,
         offset: 0,
       );
@@ -74,6 +79,7 @@ class CallListController extends StateNotifier<CallListState> {
         accessToken: context.accessToken,
         workspaceId: context.workspaceId,
         leadId: _leadId,
+        phone: _phone,
         limit: state.limit,
         offset: state.items.length,
       );

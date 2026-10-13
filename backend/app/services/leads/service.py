@@ -6,6 +6,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from app.core.parallel import run_parallel
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.repositories.allocations import AllocationRepository
 from app.repositories.lead_reference import (
@@ -621,20 +622,26 @@ class LeadService:
     def _enrich(self, workspace_id: UUID, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not rows:
             return []
-        status_map = {s["id"]: s for s in self._statuses.list_for_workspace(workspace_id)}
-        source_map = {s["id"]: s for s in self._sources.list_for_workspace(workspace_id)}
         member_ids = {r.get("assigned_member_id") for r in rows} | {r.get("created_by_member_id") for r in rows}
-        member_names = self._members.map_names(workspace_id, [m for m in member_ids if m])
         lead_ids = [r["id"] for r in rows]
-        tag_map = self._lead_tags.map_tags_for_leads(workspace_id, lead_ids)
 
-        # Custom fields: one defs read + one batched values read, then
-        # remap {field_id: value} -> {field_code: value} per lead. Same
-        # N+1-free shape as tags. Archived fields are included so a value
-        # doesn't vanish from a lead the moment an admin archives it.
-        cf_defs = self._custom_fields.list_fields(workspace_id)
+        # Six independent lookups (statuses, sources, member names, tags, custom-field definitions and
+        # values), side by side instead of one after another. Custom fields: one defs read + one batched
+        # values read, then remapped {field_id: value} -> {field_code: value} per lead. Archived fields are
+        # included so a value doesn't vanish from a lead the moment an admin archives it.
+        statuses, sources, member_names, tag_map, cf_defs, cf_values = run_parallel(
+            [
+                lambda: self._statuses.list_for_workspace(workspace_id),
+                lambda: self._sources.list_for_workspace(workspace_id),
+                lambda: self._members.map_names(workspace_id, [m for m in member_ids if m]),
+                lambda: self._lead_tags.map_tags_for_leads(workspace_id, lead_ids),
+                lambda: self._custom_fields.list_fields(workspace_id),
+                lambda: self._custom_field_values.map_for_leads(workspace_id, lead_ids),
+            ]
+        )
+        status_map = {s["id"]: s for s in statuses}
+        source_map = {s["id"]: s for s in sources}
         cf_code_by_id = {f["id"]: f["code"] for f in cf_defs}
-        cf_values = self._custom_field_values.map_for_leads(workspace_id, lead_ids)
 
         enriched = []
         for r in rows:

@@ -4,6 +4,16 @@ import app.services.calls.service as calls_service_module
 import app.services.followups.service as followups_service_module
 import app.services.leads.service as leads_service_module
 from app.core.rate_limit import reset_rate_limit_state
+from app.security.authorization import clear_allow_cache
+
+
+@pytest.fixture(autouse=True)
+def _reset_allow_cache():
+    """Authorization remembers "yes" answers for a few seconds; every test starts with none, so one
+    test's allowed member/permission can never satisfy another test's expected refusal."""
+    clear_allow_cache()
+    yield
+    clear_allow_cache()
 
 
 @pytest.fixture(autouse=True)

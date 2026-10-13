@@ -31,10 +31,14 @@ class CallRepository(BaseRepository):
         *,
         lead_id: UUID | None = None,
         direction: str | None = None,
+        phone_key: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[dict[str, Any]], int]:
         query = self._client.table("calls").select("*", count="exact").eq("workspace_id", str(workspace_id))
+        if phone_key:
+            # Numbers are stored in E.164 (+91...), so the last 10 digits always end the value.
+            query = query.like("phone_number", f"%{phone_key}")
         if lead_id is not None:
             query = query.eq("lead_id", str(lead_id))
         if direction is not None:

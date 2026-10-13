@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../call_outcome/presentation/widgets/interested_in_row.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -115,10 +116,11 @@ class CustomerDetailScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             DetailInfoRow(label: 'Phone', value: customer.phone ?? '—'),
             DetailInfoRow(label: 'Email', value: customer.email ?? '—'),
+            CustomFieldRows(customFields: customer.customFields),
             const SizedBox(height: AppSpacing.lg),
             const SectionHeader(icon: Icons.assignment_ind_outlined, title: 'Status & assignment'),
             const SizedBox(height: AppSpacing.sm),
-            DetailInfoRow(label: 'Status', value: customer.status?.name ?? '—'),
+            BuiltInStatusRow(name: customer.status?.name),
             DetailInfoRow(label: 'Priority', value: customer.priority),
             DetailInfoRow(label: 'Source', value: customer.source?.name ?? '—'),
             DetailInfoRow(label: 'Assigned to', value: customer.assignedMember?.fullName ?? 'Unassigned'),

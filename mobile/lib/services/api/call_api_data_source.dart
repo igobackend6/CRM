@@ -15,6 +15,7 @@ abstract class CallApiDataSource {
     required String workspaceId,
     String? leadId,
     String? direction,
+    String? phone,
     required int limit,
     required int offset,
   });
@@ -41,6 +42,7 @@ class DioCallApiDataSource implements CallApiDataSource {
     required String workspaceId,
     String? leadId,
     String? direction,
+    String? phone,
     required int limit,
     required int offset,
   }) async {
@@ -50,6 +52,7 @@ class DioCallApiDataSource implements CallApiDataSource {
         queryParameters: {
           'lead_id': ?leadId,
           'direction': ?direction,
+          'phone': ?phone,
           'limit': limit,
           'offset': offset,
         },

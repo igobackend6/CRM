@@ -23,7 +23,7 @@ def _service(client: Client) -> CustomFieldService:
 
 
 @router.get("/workspaces/{workspace_id}/custom-fields", response_model=list[CustomFieldOut])
-async def list_custom_fields(
+def list_custom_fields(
     workspace_id: UUID,
     client: Annotated[Client, Depends(require_workspace_member)],
 ) -> list[CustomFieldOut]:
@@ -33,7 +33,7 @@ async def list_custom_fields(
 
 
 @router.post("/workspaces/{workspace_id}/custom-fields", response_model=CustomFieldOut, status_code=201)
-async def create_custom_field(
+def create_custom_field(
     workspace_id: UUID,
     body: CustomFieldCreate,
     client: Annotated[Client, Depends(require_permission(Permission.WORKSPACE_MANAGE))],
@@ -42,7 +42,7 @@ async def create_custom_field(
 
 
 @router.patch("/workspaces/{workspace_id}/custom-fields/{field_id}", response_model=CustomFieldOut)
-async def update_custom_field(
+def update_custom_field(
     workspace_id: UUID,
     field_id: UUID,
     body: CustomFieldUpdate,
@@ -52,7 +52,7 @@ async def update_custom_field(
 
 
 @router.delete("/workspaces/{workspace_id}/custom-fields/{field_id}", status_code=204)
-async def delete_custom_field(
+def delete_custom_field(
     workspace_id: UUID,
     field_id: UUID,
     client: Annotated[Client, Depends(require_permission(Permission.WORKSPACE_MANAGE))],

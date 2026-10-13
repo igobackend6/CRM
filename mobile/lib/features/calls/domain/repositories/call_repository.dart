@@ -9,6 +9,7 @@ abstract class CallRepository {
     required String workspaceId,
     String? leadId,
     String? direction,
+    String? phone,
     int limit = 20,
     int offset = 0,
   });

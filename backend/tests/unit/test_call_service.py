@@ -68,6 +68,30 @@ def test_list_calls_enriches_lead_and_agent():
     assert items[0]["agent_member"]["full_name"] == "Agent Smith"
 
 
+def test_a_call_from_an_unknown_number_has_no_lead_but_keeps_its_name_and_number():
+    """Migration 000034: device-synced calls from numbers that are not leads have lead_id NULL."""
+    row = _call_row(lead_id=None, contact_name="Unknown", phone_number="+919818484388", source="device_sync")
+    service = CallService(_client(calls=FakeResponse(data=[row], count=1)))
+
+    items, total = service.list_calls(WORKSPACE_ID, lead_id=None, direction=None, limit=20, offset=0)
+
+    assert total == 1
+    assert items[0]["lead"] is None
+    assert items[0]["contact_name"] == "Unknown"
+    assert items[0]["phone_number"] == "+919818484388"
+    assert items[0]["agent_member"]["full_name"] == "Agent Smith"
+
+
+def test_calls_of_one_number_are_filtered_by_its_last_ten_digits():
+    client = _client()
+    service = CallService(client)
+
+    items, total = service.list_calls(WORKSPACE_ID, lead_id=None, direction=None, phone_key="9818484388", limit=20, offset=0)
+
+    # The query builder accepts the number filter (the fake does not evaluate it) and the page is unchanged.
+    assert total == 1 and len(items) == 1
+
+
 def test_get_call_returns_enriched_row():
     client = _client()
     service = CallService(client)
